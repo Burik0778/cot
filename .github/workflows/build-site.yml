@@ -33,7 +33,7 @@ jobs:
         run: python -m unittest discover -s tests
 
       - name: Скачать данные CFTC и FRED
-        run: python scripts/init_db.py --live --currencies EUR GBP JPY AUD CAD CHF MXN
+        run: python scripts/init_db.py --live
 
       - name: Собрать сайт
         run: python scripts/build_site.py
