@@ -45,7 +45,9 @@ CREATE TABLE IF NOT EXISTS cot_processed (
     net_oi REAL, long_oi REAL, short_oi REAL,
     chg_1w REAL, chg_4w REAL, chg_8w REAL, chg_13w REAL, chg_26w REAL, chg_52w REAL,
     chg_4w_z REAL,
-    long_chg_1w REAL, short_chg_1w REAL,
+    long_chg_1w REAL, short_chg_1w REAL, long_chg_4w REAL, short_chg_4w REAL,
+    long_chg_13w REAL, short_chg_13w REAL,
+    oi_chg_1w REAL, oi_chg_4w REAL, oi_pct_52w REAL, net_rank_156w REAL,
     pct_13w REAL, pct_26w REAL, pct_52w REAL, pct_156w REAL, pct_260w REAL,
     z_13w REAL, z_26w REAL, z_52w REAL, z_156w REAL, z_260w REAL,
     streak_up_weeks INTEGER, streak_down_weeks INTEGER,
@@ -162,7 +164,12 @@ class Database:
         существующая база молча роняет запись новых полей — ровно так
         market_states однажды перестал строиться целиком."""
         expected = {
-            "cot_processed": [("long_chg_1w", "REAL"), ("short_chg_1w", "REAL")],
+            "cot_processed": [
+                ("long_chg_1w", "REAL"), ("short_chg_1w", "REAL"),
+                ("long_chg_4w", "REAL"), ("short_chg_4w", "REAL"),
+                ("long_chg_13w", "REAL"), ("short_chg_13w", "REAL"),
+                ("oi_chg_4w", "REAL"), ("oi_chg_4w_pct", "REAL"),
+            ],
         }
         for table, cols in expected.items():
             have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}

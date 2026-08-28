@@ -23,6 +23,7 @@ from src.pipeline import expand_features_json
 from src.analogs.similarity import fit, find_analogs
 from src.analogs.baserate import compare_to_base_rate
 from src.ai.analysis_ru import AnalysisContext, ParticipantSnapshot, AnalogCase, build_full_analysis
+from src.ai.briefing_ru import Flow, BriefingInput, build_facts
 
 REGIME_RU = {
     "Bullish Reversal": "Разворот вверх", "Bearish Reversal": "Разворот вниз",
@@ -203,6 +204,36 @@ def analyze(states, code):
     )
 
     sections = {str(h): build_full_analysis(ctx, h) for h in HORIZONS}
+
+    # Фактическая сводка: что именно сделали участники, в контрактах,
+    # с разложением на покупки/закрытия.
+    flows = [Flow(
+        label=PARTICIPANT_RU[k], net=clean(current.get(f"{k}_net")),
+        net_oi=clean(current.get(f"{k}_net_oi")),
+        chg_1w=clean(current.get(f"{k}_chg_1w")), chg_4w=clean(current.get(f"{k}_chg_4w")),
+        chg_13w=clean(current.get(f"{k}_chg_13w")),
+        long_chg_1w=clean(current.get(f"{k}_long_chg_1w")),
+        short_chg_1w=clean(current.get(f"{k}_short_chg_1w")),
+        long_chg_4w=clean(current.get(f"{k}_long_chg_4w")),
+        short_chg_4w=clean(current.get(f"{k}_short_chg_4w")),
+        pct_52w=clean(current.get(f"{k}_pct_52w")), pct_156w=clean(current.get(f"{k}_pct_156w")),
+        z_52w=clean(current.get(f"{k}_z_52w")),
+        streak_up=clean(current.get(f"{k}_streak_up_weeks")),
+        streak_down=clean(current.get(f"{k}_streak_down_weeks")),
+        rank_156w=clean(current.get(f"{k}_net_rank_156w")),
+        is_spec=(k == sk),
+    ) for k in participants if k != "nonreportables"]
+
+    facts = build_facts(BriefingInput(
+        market_name=m.name, report_date=str(current["report_date"]), flows=flows,
+        open_interest=clean(current.get(f"{sk}_open_interest")),
+        oi_chg_1w=clean(current.get(f"{sk}_oi_chg_1w")),
+        oi_chg_4w=clean(current.get(f"{sk}_oi_chg_4w")),
+        oi_pct_52w=clean(current.get(f"{sk}_oi_pct_52w")),
+        price=clean(current.get("price_close")),
+        price_chg_4w=clean(current.get("price_chg_4w")),
+        price_chg_8w=clean(current.get("price_chg_8w")),
+    ))
     spec = ctx.participants[sk]
     badge, badge_kind = signal_badge(spec.pct_52w, spec.streak_up, spec.streak_down, spec.chg_4w)
     hist = states.tail(261)
@@ -236,6 +267,7 @@ def analyze(states, code):
                      for a in analog_cases],
         "horizon_stats": {str(h): s for h, s in horizon_stats.items()},
         "sections": sections,
+        "facts": facts,
         "history": [
             {"d": str(r["report_date"]), "p": clean(r.get("price_close")),
              "oi": clean(r.get(f"{sk}_open_interest")),

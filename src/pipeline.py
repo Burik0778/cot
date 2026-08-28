@@ -17,7 +17,8 @@ from datetime import date
 from config import settings
 from src.data.db import Database
 from src.cot.metrics import add_basic_metrics, add_changes, add_streaks
-from src.cot.percentile import add_percentiles, add_zscores, rolling_zscore_excl_current
+from src.cot.percentile import (add_percentiles, add_zscores,
+                                 rolling_zscore_excl_current, rolling_percentile_excl_current)
 from src.cot.regimes import classify_dataframe
 from src.cot.divergence import detect_pairwise_divergence
 from src.price.returns import add_forward_returns
@@ -31,12 +32,23 @@ def build_cot_processed(cot_raw: pd.DataFrame) -> pd.DataFrame:
         sub = sub.sort_values("report_date").reset_index(drop=True)
         sub = add_basic_metrics(sub)
         sub = add_changes(sub, "net")
-        # Изменения лонга и шорта по отдельности — референсная таблица
-        # показывает их рядом с нетто, и это правда информативнее: рост
-        # нетто за счёт закрытия шортов означает не то же самое, что за
-        # счёт набора лонгов.
-        sub["long_chg_1w"] = sub["long"].diff(1)
-        sub["short_chg_1w"] = sub["short"].diff(1)
+
+        # Лонг и шорт по отдельности. Ради этого всё и считается: рост нетто
+        # за счёт закрытия шортов и за счёт набора лонгов — разные события,
+        # а по одному нетто их не различить.
+        for w in (1, 4, 13):
+            sub[f"long_chg_{w}w"] = sub["long"].diff(w)
+            sub[f"short_chg_{w}w"] = sub["short"].diff(w)
+
+        # Открытый интерес: растёт рынок целиком или идёт перекладывание.
+        sub["oi_chg_1w"] = sub["open_interest"].diff(1)
+        sub["oi_chg_4w"] = sub["open_interest"].diff(4)
+        sub["oi_pct_52w"] = rolling_percentile_excl_current(sub["open_interest"], 52)
+
+        # Ранг: «позиция была ниже в N неделях из 156» — конкретнее перцентиля.
+        sub["net_rank_156w"] = sub["net"].rolling(157).apply(
+            lambda w: float((w[:-1] < w[-1]).sum()), raw=True)
+
         sub = add_streaks(sub, "net")
         sub = add_percentiles(sub, "net_oi")
         sub = add_zscores(sub, "net_oi")
@@ -49,7 +61,9 @@ def build_cot_processed(cot_raw: pd.DataFrame) -> pd.DataFrame:
         "market", "participant", "report_date", "availability_date",
         "long", "short", "net", "open_interest", "net_oi", "long_oi", "short_oi",
         "chg_1w", "chg_4w", "chg_8w", "chg_13w", "chg_26w", "chg_52w", "chg_4w_z",
-        "long_chg_1w", "short_chg_1w",
+        "long_chg_1w", "short_chg_1w", "long_chg_4w", "short_chg_4w",
+        "long_chg_13w", "short_chg_13w",
+        "oi_chg_1w", "oi_chg_4w", "oi_pct_52w", "net_rank_156w",
         "pct_13w", "pct_26w", "pct_52w", "pct_156w", "pct_260w",
         "z_13w", "z_26w", "z_52w", "z_156w", "z_260w",
         "streak_up_weeks", "streak_down_weeks",

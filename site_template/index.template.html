@@ -169,6 +169,31 @@ details .ul{margin-top:15px}
 .gp{background:rgba(38,217,127,.07)}.gn{background:rgba(255,92,85,.07)}
 
 
+
+/* фактическая сводка */
+.fct{margin-bottom:14px}
+.fct h4{font-size:13px;font-weight:600;color:var(--tx);margin-bottom:11px;display:flex;align-items:center;gap:9px}
+.fct h4:before{content:"";width:3px;height:13px;border-radius:2px;background:var(--gd)}
+.fct ul{list-style:none;display:grid;gap:9px}
+.fct li{font-size:13.5px;color:var(--tx2);line-height:1.62;padding-left:16px;position:relative}
+.fct li:before{content:"";position:absolute;left:0;top:8px;width:4px;height:4px;border-radius:50%;background:var(--ln2)}
+.fct li b{color:var(--tx);font-weight:600}
+
+/* раскрытие графика на весь экран */
+.exp{position:absolute;top:14px;right:16px;font-size:11px;color:var(--tx3);border:1px solid var(--ln2);
+  border-radius:6px;padding:4px 10px;background:var(--pane2);transition:.15s;z-index:5}
+.exp:hover{color:var(--tx);border-color:var(--vi)}
+.pn{position:relative}
+.modal{position:fixed;inset:0;z-index:200;background:rgba(3,4,7,.93);backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;padding:24px;opacity:0;pointer-events:none;transition:opacity .18s}
+.modal.on{opacity:1;pointer-events:auto}
+.mbox{background:var(--pane);border:1px solid var(--ln2);border-radius:16px;width:100%;max-width:1500px;
+  max-height:94vh;overflow:auto;padding:24px 28px;box-shadow:0 30px 90px rgba(0,0,0,.7)}
+.mhd{display:flex;align-items:baseline;gap:14px;margin-bottom:4px;flex-wrap:wrap}
+.mhd h3{font-size:19px;font-weight:600}
+.mcl{margin-left:auto;font-size:22px;line-height:1;color:var(--tx3);padding:0 6px}
+.mcl:hover{color:var(--tx)}
+
 /* тултип на графиках */
 .cw{position:relative}
 .cw:hover .cx{opacity:1}
@@ -215,6 +240,7 @@ footer{border-top:1px solid var(--ln);margin-top:44px;padding:24px 0 56px;color:
   <input class="inp" id="q" placeholder="Поиск инструмента…" aria-label="Поиск">
 </div></header>
 
+<div class="modal" id="modal"><div class="mbox" id="mbox"></div></div>
 <main class="wrap">
   <div id="ban"></div>
   <div id="scr"></div>
@@ -364,7 +390,9 @@ function drawSec(){
   const c={};DATA.markets.forEach(m=>c[m.sector]=(c[m.sector]||0)+1);
   const L=[["ALL","Все",DATA.markets.length],...Object.entries(DATA.sectors).filter(([k])=>c[k]).map(([k,v])=>[k,v,c[k]])];
   $("sec").innerHTML=L.map(([k,l,n])=>`<button class="sg${k===sec?" on":""}" data-s="${k}">${E(l)}<b>${n}</b></button>`).join("");
-  $("sec").querySelectorAll(".sg").forEach(b=>b.onclick=()=>{sec=b.dataset.s;drawSec();drawScr();});
+  $("sec").querySelectorAll(".sg").forEach(b=>b.onclick=()=>{sec=b.dataset.s;$("modal").onclick=e=>{if(e.target.id==="modal")closeModal();};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&MODAL)closeModal();});
+drawSec();drawScr();});
 }
 const COLS=[["name","Инструмент"],["sector","Сектор"],["net","Чистая позиция"],["pct","Перцентиль"],["z","Z-score"],["chg","Δ за неделю"],["oi","Откр. интерес"],["badge","Сигнал"],["date","Дата"]];
 const RV=m=>{const s=SPEC(m);return{name:m.name,sector:m.sector,net:s.net,pct:s.pct_52w,z:s.z_52w,chg:s.chg_1w,oi:m.open_interest,badge:m.badge,date:m.report_date};};
@@ -429,7 +457,64 @@ function draw(){
   $("det").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{per=+b.dataset.p;draw();});
   $("pn").innerHTML=({dash:pDash,strips:pStrips,hist:pHist,net:pNet,tbl:pTbl})[tab](m,S,st,h);
   bindHover($("pn"),h);
+  $("pn").querySelectorAll(".exp").forEach(b=>b.onclick=e=>{e.stopPropagation();openModal(b.dataset.x);});
   if(tab==="hist")bindAnalogs(m);
+}
+
+
+/* ─── графики на весь экран ─── */
+let MODAL=null;
+function openModal(kind){
+  MODAL=kind;
+  const m=cur,h=m.history.slice(-per);
+  const box=$("mbox");
+  box.innerHTML=`<div class="mhd"><h3>${E(m.name)} · ${kind==="price"?"Цена и позиционирование":kind==="flow"?"Поток позиций":"Чистые позиции всех групп"}</h3>
+      <span class="cp">${E(m.report_date)}</span><span class="cp">${h.length} нед.</span>
+      <button class="mcl" id="mclose" aria-label="Закрыть">×</button></div>
+    <div class="ps">Наведите курсор — покажет значения на выбранную неделю. Период переключается на странице инструмента.</div>
+    <div id="mbody"></div>`;
+  $("mbody").innerHTML=kind==="price"?bigPrice(m,h):kind==="flow"?bigFlow(m,h):bigNet(m,h);
+  bindHover($("mbody"),h);
+  $("modal").classList.add("on");
+  $("mclose").onclick=closeModal;
+}
+function closeModal(){MODAL=null;$("modal").classList.remove("on");}
+
+function bigPrice(m,h){
+  const pv=h.map(x=>x.p),nv=h.map(x=>x[m.spec_key]),zv=h.map(x=>x.z);
+  const ps=scale(pv,300,12,26),ns=scale(nv,230,10,24),zs=scale(zv,170,10,22);
+  return `${hoverable(svg(300,grid(ps,300,12,26,"p")+path(pv,ps,300,1,"#F2F4F8","wt")),h,
+      [{key:"p",label:"Цена",color:"#F2F4F8",fmt:"price",mn:ps&&ps.mn,mx:ps&&ps.mx,pt:12,pb:26}],300)}
+    ${hoverable(svg(230,grid(ns,230,10,24,"k")+zline(ns,230)+path(nv,ns,230,1,"#F0B429","gd")),h,
+      [{key:m.spec_key,label:"Чистая позиция",color:"#F0B429",fmt:"n",mn:ns&&ns.mn,mx:ns&&ns.mx,pt:10,pb:24}],230)}
+    ${hoverable(svg(170,grid(zs,170,10,22,"z")+zline(zs,170)+path(zv,zs,170,0,"#3ECFDA")),h,
+      [{key:"z",label:"Z-score",color:"#3ECFDA",fmt:"z",mn:zs&&zs.mn,mx:zs&&zs.mx,pt:10,pb:22}],170)}
+    ${dateAxis(h)}
+    <div class="lgn"><span><i style="background:#F2F4F8"></i>Цена</span><span><i style="background:#F0B429"></i>Чистая позиция</span><span><i style="background:#3ECFDA"></i>Z-score</span></div>`;
+}
+function bigFlow(m,h){
+  return barsChart(h.map((x,i)=>i?((x[m.spec_key]??0)-(h[i-1][m.spec_key]??0)):null),330)+dateAxis(h);
+}
+function bigNet(m,h){
+  const ks=m.participants.map(p=>p.key);
+  const C={leveraged_funds:"#26D97F",managed_money:"#26D97F",asset_manager:"#F0B429",producer_merchant:"#F0B429",
+    dealer:"#FF5C55",swap_dealers:"#FF5C55",other_reportables:"#8B7CFF",nonreportables:"#3ECFDA"};
+  const all=[].concat(...ks.map(k=>h.map(x=>x[k]).filter(v=>v!=null)));
+  if(!all.length)return "<div class='pr'>Нет данных.</div>";
+  const s=scale(all,560,14,26);
+  return hoverable(svg(560,grid(s,560,14,26,"k")+zline(s,560)+ks.map(k=>path(h.map(x=>x[k]),s,560,0,C[k]||"#5A6478")).join("")),h,
+      ks.map(k=>({key:k,label:m.participants.find(p=>p.key===k).label,color:C[k]||"#5A6478",fmt:"n",mn:s&&s.mn,mx:s&&s.mx,pt:14,pb:26})),560)
+    +dateAxis(h)+`<div class="lgn">${m.participants.map(p=>`<span><i style="background:${C[p.key]||"#5A6478"}"></i>${E(p.label)}</span>`).join("")}</div>`;
+}
+
+/* ─── фактическая сводка ─── */
+function factsBlock(m){
+  if(!m.facts||!m.facts.length)return "";
+  return `<div class="pn"><h3>Что происходит: факты</h3>
+    <div class="ps">Конкретные цифры за неделю и месяц, с разбором того, ЧТО именно сделали участники:
+      набирали позицию или закрывали противоположную. Внешне это выглядит одинаково, а означает разное.</div>
+    ${m.facts.map(b=>`<div class="fct"><h4>${E(b.title)}</h4>
+      <ul>${b.lines.map(l=>`<li>${M(l)}</li>`).join("")}</ul></div>`).join("")}</div>`;
 }
 
 function pDash(m,S,st,h){
@@ -447,7 +532,10 @@ function pDash(m,S,st,h){
 
   <div class="pn"><div class="vd">${E(S.configuration_name)}</div><div class="pr">${M(S.configuration_text)}</div></div>
 
+  ${factsBlock(m)}
+
   ${m.has_price?`<div class="pn">
+    <button class="exp" data-x="price">Развернуть ⤢</button>
     <div class="ph"><h3>Цена и позиционирование</h3><span class="t3" style="font-size:11px">общая ось времени</span></div>
     <div class="ps">Сверху цена, ниже чистая позиция «${E(s.label.toLowerCase())}», внизу z-score — насколько позиция отклонилась от своей нормы.</div>
     ${hoverable(svg(150,grid(ps,150,10,18,"p")+path(pv,ps,150,1,"#F2F4F8","wt")),h,
@@ -460,7 +548,7 @@ function pDash(m,S,st,h){
     <div class="lgn"><span><i style="background:#F2F4F8"></i>Цена</span><span><i style="background:#F0B429"></i>Чистая позиция</span><span><i style="background:#3ECFDA"></i>Z-score</span></div>
   </div>`:""}
 
-  <div class="pn"><div class="ph"><h3>Поток позиций</h3></div>
+  <div class="pn"><button class="exp" data-x="flow">Развернуть ⤢</button><div class="ph"><h3>Поток позиций</h3></div>
     <div class="ps">Изменение чистой позиции неделя к неделе. Зелёное — набирают, красное — сокращают. Устойчивая серия одного цвета информативнее одиночного всплеска.</div>
     ${barsChart(h.map((x,i)=>i?((x[m.spec_key]??0)-(h[i-1][m.spec_key]??0)):null),120)}
     ${dateAxis(h)}</div>
@@ -565,7 +653,7 @@ function pNet(m,S,st,h){
   if(!all.length)return `<div class="pn"><div class="pr">Нет данных.</div></div>`;
   const s=scale(all,360,12,22);
   const paths=ks.map(k=>path(h.map(x=>x[k]),s,360,0,C[k]||"#5A6478")).join("");
-  return `<div class="pn"><h3>Чистые позиции всех групп</h3>
+  return `<div class="pn"><button class="exp" data-x="net">Развернуть ⤢</button><h3>Чистые позиции всех групп</h3>
     <div class="ps">Кто как стоит и как это менялось. Расхождения и пересечения между группами обычно информативнее,
       чем каждая линия по отдельности: когда медленные и быстрые деньги расходятся, направление ещё не решено.</div>
     ${hoverable(svg(360,grid(s,360,12,22,"k")+zline(s,360)+paths),h,
@@ -616,6 +704,8 @@ function pTbl(m){
 $("ban").innerHTML=DATA.synthetic?`<div class="alert a-red">Демо-режим: данные сгенерированы для проверки программы. Это не рынок.</div>`:"";
 $("bt").textContent="Обновлено "+DATA.built;
 $("q").oninput=e=>{q=e.target.value.toLowerCase().trim();if($("det").classList.contains("hide"))drawScr();};
+$("modal").onclick=e=>{if(e.target.id==="modal")closeModal();};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&MODAL)closeModal();});
 drawSec();drawScr();
 </script>
 </body>

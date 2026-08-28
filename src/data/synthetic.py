@@ -89,6 +89,7 @@ def generate_currency(currency: str, start: date, end: date, seed: int) -> tuple
     am_net_frac = _ou_process(n, rng, theta=0.03, sigma=0.015, scale=0.35)
     other_net_frac = _ou_process(n, rng, theta=0.10, sigma=0.02, scale=0.20)
     dealer_net_frac = -0.5 * am_net_frac - 0.3 * lev_net_frac + _ou_process(n, rng, theta=0.08, sigma=0.01, scale=0.15)
+    gross_noise = _ou_process(n, rng, theta=0.05, sigma=0.04, scale=1.0)
 
     ingested_at = pd.Timestamp.utcnow().isoformat()
     rows: list[dict] = []
@@ -99,7 +100,12 @@ def generate_currency(currency: str, start: date, end: date, seed: int) -> tuple
 
         def long_short(net_frac: float, gross_mult: float) -> tuple[int, int]:
             net = net_frac * this_oi
-            gross = max(gross_mult * this_oi, abs(net) * 1.1 + 50)
+            # Валовая позиция гуляет сама по себе, а не жёстко следует за нетто.
+            # Иначе лонг и шорт всегда двигаются зеркально, и разложение
+            # потока («покупали» против «закрывали шорты») теряет смысл —
+            # на таких данных оно всегда показывало бы «с двух сторон».
+            gross_wobble = 1.0 + 0.35 * gross_noise[i]
+            gross = max(gross_mult * this_oi * gross_wobble, abs(net) * 1.1 + 50)
             long_v = int(round((gross + net) / 2))
             short_v = int(round((gross - net) / 2))
             return max(long_v, 0), max(short_v, 0)
