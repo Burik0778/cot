@@ -1,0 +1,61 @@
+name: Собрать и опубликовать сайт
+
+# Когда запускается:
+#  1. По расписанию — каждую субботу. CFTC публикует отчёт в пятницу
+#     в 15:30 по Нью-Йорку (19:30-20:30 UTC), берём с запасом.
+#  2. Вручную — кнопка "Run workflow" на вкладке Actions.
+#  3. При изменении кода в ветке main.
+on:
+  schedule:
+    - cron: "0 6 * * 6"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Установить зависимости
+        run: pip install -r requirements.txt
+
+      - name: Прогнать тесты
+        run: python -m unittest discover -s tests
+
+      # База данных не хранится в репозитории: история CFTC небольшая
+      # (несколько тысяч строк на валюту), скачать её заново проще и
+      # надёжнее, чем тащить состояние между запусками.
+      - name: Скачать данные CFTC и FRED
+        run: python scripts/init_db.py --live --currencies EUR GBP JPY AUD CAD CHF MXN
+
+      - name: Собрать сайт
+        run: python scripts/build_site.py
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
