@@ -1,0 +1,20 @@
+# Core
+pandas>=2.1
+numpy>=1.26
+scipy>=1.11
+requests>=2.31
+python-dotenv>=1.0
+
+# Data export
+openpyxl>=3.1
+pyarrow>=14.0        # optional at runtime (Parquet export) -- see src/data/export.py
+
+# Сайт собирается статически (scripts/build_site.py) -- UI-библиотеки не нужны
+
+# Reporting (optional PDF path -- see src/reporting/report.py)
+reportlab>=4.0
+
+# Dev / testing
+# (this project's automated tests use Python's built-in `unittest`, not
+#  pytest, specifically so `python -m unittest discover -s tests` works
+#  with zero extra dependencies -- see README "Running the tests")
