@@ -71,6 +71,50 @@ def signal_badge(pct52, streak_up, streak_down, chg4):
     return ("—", "none")
 
 
+
+def build_table(states, participants):
+    """
+    Таблица в духе референса: по каждой группе — изменение лонга и шорта,
+    Net/OI в процентах, изменение нетто и сама чистая позиция.
+    Свежие отчёты сверху.
+    """
+    rows = []
+    for _, r in states.tail(80).iloc[::-1].iterrows():
+        row = {"d": str(r["report_date"])}
+        for k in participants:
+            row[f"{k}_lc"] = clean(r.get(f"{k}_long_chg_1w"))
+            row[f"{k}_sc"] = clean(r.get(f"{k}_short_chg_1w"))
+            row[f"{k}_oi"] = clean(r.get(f"{k}_net_oi"))
+            row[f"{k}_nc"] = clean(r.get(f"{k}_chg_1w"))
+            row[f"{k}_np"] = clean(r.get(f"{k}_net"))
+        rows.append(row)
+    return rows
+
+
+def build_table_stats(states, participants):
+    """Строки MAX / MIN / 5Y MAX / 5Y MIN / среднее за 13 недель — как в
+    референсе. Считаются по тем же колонкам, что и сама таблица."""
+    out = {}
+    tail5y = states.tail(261)
+    tail13 = states.tail(13)
+    for label, frame, fn in [
+        ("MAX", states, "max"), ("MIN", states, "min"),
+        ("MAX5Y", tail5y, "max"), ("MIN5Y", tail5y, "min"),
+        ("AVG13W", tail13, "mean"),
+    ]:
+        row = {}
+        for k in participants:
+            for suffix, col in [("lc", f"{k}_long_chg_1w"), ("sc", f"{k}_short_chg_1w"),
+                                 ("oi", f"{k}_net_oi"), ("nc", f"{k}_chg_1w"), ("np", f"{k}_net")]:
+                if col in frame.columns:
+                    series = frame[col].dropna()
+                    row[f"{k}_{suffix}"] = clean(getattr(series, fn)()) if len(series) else None
+                else:
+                    row[f"{k}_{suffix}"] = None
+        out[label] = row
+    return out
+
+
 def snap(row, key):
     return ParticipantSnapshot(
         key=key, net=clean(row.get(f"{key}_net")), net_oi=clean(row.get(f"{key}_net_oi")),
@@ -94,7 +138,7 @@ def analyze(states, code):
                        and usable["fwd_return_8w"].notna().sum() >= 20)
 
     current = states.iloc[-1]
-    analog_cases, horizon_stats, analog_pcts = [], {}, []
+    analog_cases, horizon_stats, analog_pcts, analog_details = [], {}, [], []
 
     if has_analogs:
         cur = usable.iloc[-1]
@@ -118,6 +162,33 @@ def analyze(states, code):
                        forward_returns={h: clean(usable.loc[a.index].get(f"fwd_return_{h}w")) for h in HORIZONS})
             for a in found[:14]
         ]
+        # Полный снимок состояния на дату каждого аналога — чтобы карточку
+        # можно было раскрыть и увидеть, ЧТО именно тогда было похожего,
+        # а не только результат.
+        analog_details = []
+        for a in found[:14]:
+            r = usable.loc[a.index]
+            analog_details.append({
+                "date": str(r["report_date"]),
+                "similarity": round(a.similarity_score, 1),
+                "distance": round(a.distance, 3),
+                "regime": REGIME_RU.get(r.get("regime"), r.get("regime")),
+                "price": clean(r.get("price_close")),
+                "price_chg_4w": clean(r.get("price_chg_4w")),
+                "price_chg_8w": clean(r.get("price_chg_8w")),
+                "participants": [
+                    {"key": k, "label": PARTICIPANT_RU[k],
+                     "net": clean(r.get(f"{k}_net")), "net_oi": clean(r.get(f"{k}_net_oi")),
+                     "pct_52w": clean(r.get(f"{k}_pct_52w")), "z_52w": clean(r.get(f"{k}_z_52w")),
+                     "chg_4w": clean(r.get(f"{k}_chg_4w"))}
+                    for k in participants
+                ],
+                "returns": {str(h): clean(r.get(f"fwd_return_{h}w")) for h in HORIZONS},
+                "feature_match": [
+                    {"f": f, "now": clean(cur.get(f)), "then": clean(r.get(f))}
+                    for f in settings.DEFAULT_ANALOG_FEATURES if f in usable.columns
+                ],
+            })
 
     ctx = AnalysisContext(
         currency=code, pair_symbol=m.price_symbol or code,
@@ -159,6 +230,7 @@ def analyze(states, code):
             for k in participants
         ],
         "analog_percentiles": analog_pcts,
+        "analog_details": analog_details,
         "analogs": [{"date": a.date, "similarity": round(a.similarity, 1),
                       "returns": {str(h): clean(v) for h, v in a.forward_returns.items()}}
                      for a in analog_cases],
@@ -172,13 +244,8 @@ def analyze(states, code):
              "z": clean(r.get(f"{sk}_z_52w"))}
             for _, r in hist.iterrows()
         ],
-        "table": [
-            {"d": str(r["report_date"]),
-             **{f"{k}_net": clean(r.get(f"{k}_net")) for k in participants},
-             **{f"{k}_chg": clean(r.get(f"{k}_chg_1w")) for k in participants},
-             **{f"{k}_oi": clean(r.get(f"{k}_net_oi")) for k in participants}}
-            for _, r in states.tail(60).iloc[::-1].iterrows()
-        ],
+        "table": build_table(states, participants),
+        "table_stats": build_table_stats(states, participants),
     }
 
 

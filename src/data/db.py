@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS cot_processed (
     net_oi REAL, long_oi REAL, short_oi REAL,
     chg_1w REAL, chg_4w REAL, chg_8w REAL, chg_13w REAL, chg_26w REAL, chg_52w REAL,
     chg_4w_z REAL,
+    long_chg_1w REAL, short_chg_1w REAL,
     pct_13w REAL, pct_26w REAL, pct_52w REAL, pct_156w REAL, pct_260w REAL,
     z_13w REAL, z_26w REAL, z_52w REAL, z_156w REAL, z_260w REAL,
     streak_up_weeks INTEGER, streak_down_weeks INTEGER,
@@ -115,6 +116,23 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _to_sql_checked(df: pd.DataFrame, table: str, conn) -> None:
+    """
+    pandas.to_sql прячет причину сбоя за общим "Execution failed".
+    Здесь сначала сверяем колонки со схемой и падаем с внятным текстом,
+    называя лишние поля — это и была реальная причина, когда таблица
+    market_states тихо оставалась пустой.
+    """
+    schema_cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+    extra = [c for c in df.columns if c not in schema_cols]
+    if extra:
+        raise RuntimeError(
+            f"В таблице {table} нет колонок {extra}. Добавьте их в SCHEMA и в "
+            f"Database._migrate в src/data/db.py, иначе запись молча не проходит."
+        )
+    df.to_sql(table, conn, if_exists="append", index=False)
+
+
 def _parse_date_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     """SQLite has no native date type -- every date is stored as ISO TEXT
     and comes back from pandas.read_sql as a plain Python str. Every reader
@@ -136,6 +154,21 @@ class Database:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.executescript(SCHEMA)
+            self._migrate(conn)
+
+    @staticmethod
+    def _migrate(conn):
+        """Добавляет колонки, появившиеся после создания базы. Без этого
+        существующая база молча роняет запись новых полей — ровно так
+        market_states однажды перестал строиться целиком."""
+        expected = {
+            "cot_processed": [("long_chg_1w", "REAL"), ("short_chg_1w", "REAL")],
+        }
+        for table, cols in expected.items():
+            have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+            for name, typ in cols:
+                if name not in have:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {typ}")
 
     @contextmanager
     def connect(self):
@@ -195,7 +228,7 @@ class Database:
     def replace_cot_processed(self, df: pd.DataFrame):
         with self.connect() as conn:
             conn.execute("DELETE FROM cot_processed")
-            df.to_sql("cot_processed", conn, if_exists="append", index=False)
+            _to_sql_checked(df, "cot_processed", conn)
 
     def read_cot_processed(self, market: str | None = None) -> pd.DataFrame:
         with self.connect() as conn:
@@ -208,7 +241,7 @@ class Database:
     def replace_market_states(self, df: pd.DataFrame):
         with self.connect() as conn:
             conn.execute("DELETE FROM market_states")
-            df.to_sql("market_states", conn, if_exists="append", index=False)
+            _to_sql_checked(df, "market_states", conn)
 
     def read_market_states(self, market: str | None = None) -> pd.DataFrame:
         with self.connect() as conn:

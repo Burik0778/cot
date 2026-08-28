@@ -127,7 +127,7 @@ MARKETS: list[Market] = [
     # ─── Металлы (DISAGGREGATED) ─────────────────────────────────────────
     Market("GOLD", "Золото", "METALS", DISAGGREGATED, "GOLD - COMMODITY EXCHANGE|GOLD", "XAUUSD", None),
     Market("SILVER", "Серебро", "METALS", DISAGGREGATED, "SILVER - COMMODITY EXCHANGE|SILVER", "XAGUSD", None),
-    Market("COPPER- #1|COPPER", "Медь", "METALS", DISAGGREGATED, "COPPER", "COPPER", None),
+    Market("COPPER", "Медь", "METALS", DISAGGREGATED, "COPPER- #1|COPPER", "COPPER", None),
     Market("PLATINUM", "Платина", "METALS", DISAGGREGATED, "PLATINUM", "XPTUSD", None),
 
     # ─── Ставки (TFF) ────────────────────────────────────────────────────

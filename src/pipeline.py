@@ -31,6 +31,12 @@ def build_cot_processed(cot_raw: pd.DataFrame) -> pd.DataFrame:
         sub = sub.sort_values("report_date").reset_index(drop=True)
         sub = add_basic_metrics(sub)
         sub = add_changes(sub, "net")
+        # Изменения лонга и шорта по отдельности — референсная таблица
+        # показывает их рядом с нетто, и это правда информативнее: рост
+        # нетто за счёт закрытия шортов означает не то же самое, что за
+        # счёт набора лонгов.
+        sub["long_chg_1w"] = sub["long"].diff(1)
+        sub["short_chg_1w"] = sub["short"].diff(1)
         sub = add_streaks(sub, "net")
         sub = add_percentiles(sub, "net_oi")
         sub = add_zscores(sub, "net_oi")
@@ -43,6 +49,7 @@ def build_cot_processed(cot_raw: pd.DataFrame) -> pd.DataFrame:
         "market", "participant", "report_date", "availability_date",
         "long", "short", "net", "open_interest", "net_oi", "long_oi", "short_oi",
         "chg_1w", "chg_4w", "chg_8w", "chg_13w", "chg_26w", "chg_52w", "chg_4w_z",
+        "long_chg_1w", "short_chg_1w",
         "pct_13w", "pct_26w", "pct_52w", "pct_156w", "pct_260w",
         "z_13w", "z_26w", "z_52w", "z_156w", "z_260w",
         "streak_up_weeks", "streak_down_weeks",
