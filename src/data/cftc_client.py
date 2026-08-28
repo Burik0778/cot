@@ -71,35 +71,56 @@ def _request(resource_id: str, params: dict) -> list[dict]:
         f"Ни один хост CFTC не ответил. Пробовали: {BASE_URLS}. Последняя ошибка: {last_error}")
 
 
+_NAME_CACHE: dict[str, list[str]] = {}
+
+
 def list_contract_names(report: str, pattern: str = "") -> list[str]:
-    """Названия контрактов в живых данных. Нужно для диагностики, когда
-    контракт не нашёлся."""
-    resource_id = RESOURCE_IDS[report]
-    params = {"$select": "market_and_exchange_names",
-              "$group": "market_and_exchange_names", "$limit": 5000}
-    if pattern:
-        params["$where"] = f"upper(market_and_exchange_names) like '%{pattern.upper()}%'"
-    rows = _request(resource_id, params)
-    return sorted({r["market_and_exchange_names"] for r in rows if r.get("market_and_exchange_names")})
+    """
+    Все названия контрактов в живых данных, с кэшем на процесс.
+
+    Фильтрация делается в Python, а НЕ через SoQL `like`/`upper()`:
+    разные версии Socrata поддерживают их по-разному, и запрос, который
+    молча возвращает ноль строк, выглядит как «контракта не существует».
+    Один запрос за полным списком надёжнее любого серверного фильтра.
+    """
+    if report not in _NAME_CACHE:
+        rows = _request(RESOURCE_IDS[report], {
+            "$select": "market_and_exchange_names",
+            "$group": "market_and_exchange_names",
+            "$limit": 50000,
+        })
+        _NAME_CACHE[report] = sorted(
+            {r["market_and_exchange_names"] for r in rows if r.get("market_and_exchange_names")})
+    names = _NAME_CACHE[report]
+    if not pattern:
+        return names
+    p = pattern.upper()
+    return [n for n in names if p in n.upper()]
 
 
 def resolve_contract_name(report: str, match: str) -> str:
     """
-    Находит полное название контракта по подстроке. Если совпадений
-    несколько — берёт самое короткое: обычно это основной контракт, а не
-    его микро/мини-вариант с более длинным именем. Поведение
-    задокументировано, а не случайно.
+    Находит контракт по одному из вариантов написания. `match` может быть
+    строкой или списком вариантов через '|' — пробуем по очереди, потому
+    что CFTC пишет одни и те же контракты по-разному в разные годы.
+
+    Если вариантов совпало несколько, берём самое короткое название: это
+    обычно основной контракт, а не его микро/мини-версия с более длинным
+    именем. Правило задокументировано, а не случайно.
     """
-    names = list_contract_names(report, match)
-    if not names:
-        first_word = match.split()[0] if match.split() else ""
-        hint = list_contract_names(report, first_word) if first_word else []
-        raise CftcSchemaError(
-            f"В отчёте {report} не найден контракт по подстроке '{match}'. "
-            f"Похожие названия в живых данных: {hint[:12] or 'ничего похожего'}. "
-            f"Обновите cftc_match в config/markets.py."
-        )
-    return min(names, key=len)
+    variants = [v.strip() for v in match.split("|") if v.strip()]
+    for variant in variants:
+        names = list_contract_names(report, variant)
+        if names:
+            return min(names, key=len)
+
+    first_word = variants[0].split()[0] if variants and variants[0].split() else ""
+    hint = list_contract_names(report, first_word) if first_word else []
+    raise CftcSchemaError(
+        f"В отчёте {report} не найден контракт ни по одному из вариантов {variants}. "
+        f"Похожие названия в живых данных: {hint[:15] or 'ничего похожего'}. "
+        f"Обновите cftc_match в config/markets.py."
+    )
 
 
 def fetch_report(code: str, start_date: Optional[date] = None,

@@ -111,28 +111,28 @@ MARKETS: list[Market] = [
     Market("CHF", "Швейцарский франк", "FX", TFF, "SWISS FRANC", "USDCHF", "DEXSZUS", True),
     Market("NZD", "Новозеландский доллар", "FX", TFF, "NEW ZEALAND DOLLAR", "NZDUSD", None),
     Market("MXN", "Мексиканское песо", "FX", TFF, "MEXICAN PESO", "USDMXN", "DEXMXUS", True),
-    Market("DXY", "Индекс доллара", "FX", TFF, "USD INDEX", "DXY", None),
+    Market("DXY", "Индекс доллара", "FX", TFF, "USD INDEX|U.S. DOLLAR INDEX|DOLLAR INDEX", "DXY", None),
 
     # ─── Индексы (TFF) ───────────────────────────────────────────────────
-    Market("SP500", "S&P 500", "INDICES", TFF, "E-MINI S&P 500", "SPX", "SP500"),
-    Market("NASDAQ", "Nasdaq 100", "INDICES", TFF, "NASDAQ-100", "NDX", "NASDAQ100"),
-    Market("DOW", "Dow Jones", "INDICES", TFF, "DJIA", "DJI", "DJIA"),
-    Market("RUSSELL", "Russell 2000", "INDICES", TFF, "RUSSELL E-MINI", "RUT", None),
-    Market("VIX", "Индекс волатильности VIX", "INDICES", TFF, "VIX FUTURES", "VIX", "VIXCLS"),
+    Market("SP500", "S&P 500", "INDICES", TFF, "E-MINI S&P 500|E-MINI S&P500|S&P 500 Consolidated|S&P 500", "SPX", "SP500"),
+    Market("NASDAQ", "Nasdaq 100", "INDICES", TFF, "NASDAQ-100 Consolidated|NASDAQ-100 STOCK INDEX|E-MINI NASDAQ|NASDAQ", "NDX", "NASDAQ100"),
+    Market("DOW", "Dow Jones", "INDICES", TFF, "DJIA Consolidated|DOW JONES|DJIA", "DJI", "DJIA"),
+    Market("RUSSELL", "Russell 2000", "INDICES", TFF, "RUSSELL E-MINI|E-MINI RUSSELL 2000|RUSSELL 2000", "RUT", None),
+    Market("VIX", "Индекс волатильности VIX", "INDICES", TFF, "VIX FUTURES|CBOE VOLATILITY|VOLATILITY INDEX", "VIX", "VIXCLS"),
 
     # ─── Крипта (TFF) ────────────────────────────────────────────────────
     Market("BTC", "Биткоин", "CRYPTO", TFF, "BITCOIN", "BTCUSD", "CBBTCUSD"),
-    Market("ETH", "Эфир", "CRYPTO", TFF, "ETHER CASH SETTLED", "ETHUSD", "CBETHUSD"),
+    Market("ETH", "Эфир", "CRYPTO", TFF, "ETHER CASH SETTLED|ETHER", "ETHUSD", "CBETHUSD"),
 
     # ─── Металлы (DISAGGREGATED) ─────────────────────────────────────────
-    Market("GOLD", "Золото", "METALS", DISAGGREGATED, "GOLD - COMMODITY EXCHANGE", "XAUUSD", None),
-    Market("SILVER", "Серебро", "METALS", DISAGGREGATED, "SILVER - COMMODITY EXCHANGE", "XAGUSD", None),
-    Market("COPPER", "Медь", "METALS", DISAGGREGATED, "COPPER", "COPPER", None),
+    Market("GOLD", "Золото", "METALS", DISAGGREGATED, "GOLD - COMMODITY EXCHANGE|GOLD", "XAUUSD", None),
+    Market("SILVER", "Серебро", "METALS", DISAGGREGATED, "SILVER - COMMODITY EXCHANGE|SILVER", "XAGUSD", None),
+    Market("COPPER- #1|COPPER", "Медь", "METALS", DISAGGREGATED, "COPPER", "COPPER", None),
     Market("PLATINUM", "Платина", "METALS", DISAGGREGATED, "PLATINUM", "XPTUSD", None),
 
     # ─── Ставки (TFF) ────────────────────────────────────────────────────
-    Market("UST10Y", "Гособлигации США 10 лет", "RATES", TFF, "UST 10Y NOTE", "US10Y", None),
-    Market("UST2Y", "Гособлигации США 2 года", "RATES", TFF, "UST 2Y NOTE", "US2Y", None),
+    Market("UST10Y", "Гособлигации США 10 лет", "RATES", TFF, "UST 10Y NOTE|10-YEAR U.S. TREASURY|10 YEAR NOTE", "US10Y", None),
+    Market("UST2Y", "Гособлигации США 2 года", "RATES", TFF, "UST 2Y NOTE|2-YEAR U.S. TREASURY|2 YEAR NOTE", "US2Y", None),
 ]
 
 BY_CODE = {m.code: m for m in MARKETS}

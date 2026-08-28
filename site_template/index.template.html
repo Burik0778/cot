@@ -6,464 +6,452 @@
 <title>COT · Состояние рынка</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#07090F; --bg2:#0C1017; --surf:#11161F; --surf2:#161D28; --line:#1F2836; --line2:#2B3648;
-  --ink:#EDF0F5; --ink2:#9BA6B8; --mut:#616D80;
-  --up:#3DD68C; --down:#FF6B5E; --gold:#E9B949; --vio:#7C6BFF; --cy:#42C9E0;
-  --r:12px;
+  --bg:#050609; --bg2:#090B11; --pane:#0E1118; --pane2:#131722; --pane3:#181D2A;
+  --ln:#1A1F2B; --ln2:#252C3B;
+  --tx:#F2F4F8; --tx2:#98A2B6; --tx3:#5A6478;
+  --up:#26D97F; --dn:#FF5C55; --gd:#F0B429; --vi:#8B7CFF; --cy:#3ECFDA;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:'Onest',system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
-.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
-.up{color:var(--up)} .down{color:var(--down)} .mut{color:var(--mut)}
-.wrap{max-width:1360px;margin:0 auto;padding:0 22px}
-button{font-family:inherit;cursor:pointer;border:0;background:none;color:inherit}
-:focus-visible{outline:2px solid var(--vio);outline-offset:2px}
+::selection{background:rgba(139,124,255,.3)}
+body{background:var(--bg);color:var(--tx);font:400 15px/1.55 'Inter Tight',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.mn{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.up{color:var(--up)}.dn{color:var(--dn)}.t3{color:var(--tx3)}
+.wrap{max-width:1440px;margin:0 auto;padding:0 26px}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--vi);outline-offset:2px;border-radius:4px}
+.hide{display:none!important}
 
-header{position:sticky;top:0;z-index:60;background:rgba(7,9,15,.9);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
-.hd{display:flex;align-items:center;gap:20px;padding:13px 0;flex-wrap:wrap}
-.logo{font-weight:700;letter-spacing:-.02em;font-size:16px}
-.logo span{font-weight:400;color:var(--mut);font-size:11px;letter-spacing:.14em;text-transform:uppercase;margin-left:9px}
-.spacer{margin-left:auto}
-.search{background:var(--surf);border:1px solid var(--line);border-radius:9px;padding:7px 13px;color:var(--ink);font-size:13px;width:190px}
-.search::placeholder{color:var(--mut)}
+/* шапка */
+header{position:sticky;top:0;z-index:80;background:rgba(5,6,9,.88);backdrop-filter:blur(20px) saturate(1.4);border-bottom:1px solid var(--ln)}
+.hd{display:flex;align-items:center;gap:18px;height:58px}
+.lg{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:-.02em}
+.lgd{width:7px;height:7px;border-radius:50%;background:var(--gd);box-shadow:0 0 10px var(--gd)}
+.lg em{font-style:normal;font-weight:400;color:var(--tx3);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase}
+.sp{margin-left:auto}
+.inp{background:var(--pane);border:1px solid var(--ln2);border-radius:8px;padding:7px 12px;color:var(--tx);font-size:13px;width:210px;transition:.16s}
+.inp:focus{border-color:var(--vi);width:250px;outline:none}
+.inp::placeholder{color:var(--tx3)}
 
-.segbar{display:flex;gap:4px;background:var(--surf);padding:4px;border-radius:10px;border:1px solid var(--line);flex-wrap:wrap}
-.seg{padding:6px 13px;border-radius:7px;color:var(--ink2);font-size:12.5px;font-weight:500;transition:.15s;white-space:nowrap}
-.seg:hover{color:var(--ink);background:var(--surf2)}
-.seg.on{background:var(--ink);color:var(--bg);font-weight:600}
-.seg .cnt{opacity:.55;font-size:11px;margin-left:5px}
+.sgs{display:flex;gap:2px;background:var(--pane);padding:3px;border-radius:9px;border:1px solid var(--ln);flex-wrap:wrap}
+.sg{padding:6px 12px;border-radius:6px;color:var(--tx2);font-size:12.5px;font-weight:500;transition:.14s;white-space:nowrap}
+.sg:hover{color:var(--tx);background:var(--pane2)}
+.sg.on{background:var(--tx);color:var(--bg);font-weight:600}
+.sg b{opacity:.5;font-weight:500;font-size:10.5px;margin-left:5px}
 
-.banner{background:rgba(255,107,94,.09);border:1px solid rgba(255,107,94,.28);color:#FFB4AC;padding:10px 16px;border-radius:9px;margin:16px 0;font-size:13px}
+.alert{border-radius:10px;padding:11px 16px;font-size:13px;margin:16px 0;border:1px solid}
+.a-red{background:rgba(255,92,85,.07);border-color:rgba(255,92,85,.25);color:#FF9E99}
+.a-gd{background:rgba(240,180,41,.06);border-color:rgba(240,180,41,.22);color:#F0C86A}
 
-/* ─────── СКРИНЕР ─────── */
-.scr-head{padding:26px 0 16px}
-.scr-head h1{font-size:26px;font-weight:600;letter-spacing:-.03em}
-.scr-head p{color:var(--ink2);font-size:14px;margin-top:5px;max-width:78ch}
-.tblwrap{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;overflow-x:auto;margin-bottom:40px}
-table{width:100%;border-collapse:collapse;min-width:940px}
-thead th{background:var(--bg2);color:var(--mut);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;padding:11px 13px;text-align:right;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:1px solid var(--line)}
+/* заголовки секций */
+.h1{font-size:30px;font-weight:600;letter-spacing:-.035em;line-height:1.1}
+.sub{color:var(--tx2);font-size:14px;margin-top:7px;max-width:80ch;line-height:1.6}
+.eyb{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--gd);font-weight:600;margin-bottom:11px}
+
+/* скринер */
+.tbx{border:1px solid var(--ln);border-radius:14px;overflow:hidden;background:var(--pane);margin:22px 0 44px}
+.tsc{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:1020px}
+thead th{background:var(--bg2);color:var(--tx3);font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;padding:12px 14px;text-align:right;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:1px solid var(--ln);transition:.14s}
 thead th:first-child,thead th:nth-child(2){text-align:left}
-thead th:hover{color:var(--ink)}
-thead th.sorted{color:var(--gold)}
-tbody td{padding:11px 13px;text-align:right;border-bottom:1px solid var(--line);font-size:13.5px;white-space:nowrap}
+thead th:hover{color:var(--tx2);background:var(--pane2)}
+thead th.srt{color:var(--gd)}
+tbody td{padding:13px 14px;text-align:right;border-bottom:1px solid rgba(26,31,43,.7);font-size:13.5px;white-space:nowrap}
 tbody td:first-child,tbody td:nth-child(2){text-align:left}
 tbody tr{cursor:pointer;transition:background .12s}
-tbody tr:hover{background:var(--surf)}
-.mname{font-weight:600;font-size:14px}
-.msym{font-size:11px;color:var(--mut);margin-top:1px}
-.sect{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
-.pbar{display:inline-flex;align-items:center;gap:9px}
-.ptrack{width:62px;height:5px;background:var(--surf2);border-radius:3px;position:relative;overflow:hidden}
-.pfill{position:absolute;top:0;bottom:0;left:0;border-radius:3px}
-.badge{display:inline-block;font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:20px;letter-spacing:.02em}
-.b-extreme{background:rgba(233,185,73,.14);color:var(--gold)}
-.b-reversal{background:rgba(124,107,255,.16);color:#A99BFF}
-.b-crowded{background:rgba(255,107,94,.13);color:#FF9086}
-.b-accum{background:rgba(61,214,140,.13);color:var(--up)}
-.b-distrib{background:rgba(255,107,94,.11);color:#FF9086}
-.b-none{color:var(--mut)}
+tbody tr:hover{background:var(--pane2)}
+tbody tr:last-child td{border-bottom:0}
+.inm{font-weight:600;font-size:14px;letter-spacing:-.01em}
+.isy{font-size:10.5px;color:var(--tx3);margin-top:2px}
+.sct{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);padding:3px 8px;border:1px solid var(--ln2);border-radius:4px}
+.pb{display:inline-flex;align-items:center;gap:10px}
+.pt{width:74px;height:22px;background:var(--pane3);border-radius:4px;position:relative;overflow:hidden}
+.pt i{position:absolute;top:0;bottom:0;width:2.5px;border-radius:2px;box-shadow:0 0 8px currentColor}
+.pt u{position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(255,255,255,.07)}
+.bdg{display:inline-block;font-size:10.5px;font-weight:600;padding:3.5px 10px;border-radius:20px;letter-spacing:.01em;border:1px solid}
+.b-extreme{background:rgba(240,180,41,.1);color:var(--gd);border-color:rgba(240,180,41,.28)}
+.b-reversal{background:rgba(139,124,255,.12);color:#A99BFF;border-color:rgba(139,124,255,.3)}
+.b-crowded{background:rgba(255,92,85,.09);color:#FF8C86;border-color:rgba(255,92,85,.25)}
+.b-accum{background:rgba(38,217,127,.09);color:var(--up);border-color:rgba(38,217,127,.25)}
+.b-distrib{background:rgba(255,92,85,.07);color:#FF8C86;border-color:rgba(255,92,85,.2)}
+.b-none{color:var(--tx3);border-color:transparent}
 
-/* ─────── ДЕТАЛЬ ─────── */
-.crumb{display:flex;align-items:center;gap:11px;padding:20px 0 6px;font-size:12.5px;color:var(--mut);flex-wrap:wrap}
-.crumb button{color:var(--vio);font-size:12.5px}
-.chip{font-size:11px;padding:3px 9px;border-radius:5px;background:var(--surf2);border:1px solid var(--line2);color:var(--ink2)}
-.chip.red{background:rgba(255,107,94,.12);border-color:rgba(255,107,94,.3);color:#FF9086}
-.chip.grn{background:rgba(61,214,140,.12);border-color:rgba(61,214,140,.3);color:var(--up)}
-.dt-title{font-size:34px;font-weight:600;letter-spacing:-.035em;margin-bottom:2px}
-.dt-sub{color:var(--mut);font-size:14px;margin-bottom:18px}
-.tabbar{display:flex;gap:22px;border-bottom:1px solid var(--line);margin-bottom:22px;overflow-x:auto}
-.tab{padding:11px 0;font-size:14px;font-weight:500;color:var(--mut);border-bottom:2px solid transparent;white-space:nowrap;transition:.15s}
-.tab:hover{color:var(--ink2)}
-.tab.on{color:var(--ink);border-bottom-color:var(--gold)}
-.ctrls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
-.ctrl-lbl{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
-select{background:var(--surf);border:1px solid var(--line);color:var(--ink);padding:7px 11px;border-radius:8px;font-family:inherit;font-size:13px}
+/* деталь */
+.dhd{padding:22px 0 0}
+.crm{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--tx3);flex-wrap:wrap;margin-bottom:14px}
+.crm button{color:var(--vi);font-size:12.5px;font-weight:500}
+.cp{font-size:10.5px;padding:3.5px 9px;border-radius:5px;background:var(--pane2);border:1px solid var(--ln2);color:var(--tx2);font-family:'JetBrains Mono',monospace}
+.cp.r{background:rgba(255,92,85,.1);border-color:rgba(255,92,85,.28);color:#FF8C86}
+.cp.g{background:rgba(38,217,127,.1);border-color:rgba(38,217,127,.28);color:var(--up)}
+.dttl{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.dttl h1{font-size:36px;font-weight:600;letter-spacing:-.04em}
+.dttl .sy{font-size:14px;color:var(--tx3);font-family:'JetBrains Mono',monospace}
+.drg{color:var(--tx2);font-size:14px;margin-top:4px}
 
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:20px}
-.kpi{background:var(--surf);padding:16px 18px}
-.kpi .k{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-bottom:7px}
-.kpi .v{font-size:24px;font-weight:600;letter-spacing:-.03em;line-height:1}
-.kpi .s{font-size:11.5px;color:var(--mut);margin-top:6px}
+.tbs{display:flex;gap:2px;border-bottom:1px solid var(--ln);margin:22px 0 20px;overflow-x:auto}
+.tb{padding:11px 16px;font-size:13.5px;font-weight:500;color:var(--tx3);border-bottom:2px solid transparent;white-space:nowrap;transition:.15s;margin-bottom:-1px}
+.tb:hover{color:var(--tx2)}
+.tb.on{color:var(--tx);border-bottom-color:var(--gd)}
 
-.card{background:var(--surf);border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;margin-bottom:14px}
-.card h3{font-size:15px;font-weight:600;margin-bottom:3px}
-.card .sub{font-size:12.5px;color:var(--mut);margin-bottom:16px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+.ctl{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+.cl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3);font-weight:600}
 
-.verdict{font-size:24px;font-weight:500;letter-spacing:-.02em;line-height:1.3;background:linear-gradient(96deg,var(--ink) 25%,var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:12px}
-.prose{font-size:14.5px;color:var(--ink2);line-height:1.72}
-.prose b{color:var(--ink)}
-.lst{list-style:none;display:grid;gap:11px;margin-top:12px}
-.lst li{font-size:14px;color:var(--ink2);padding-left:15px;position:relative;line-height:1.6}
-.lst li:before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;border-radius:50%;background:var(--mut)}
+/* KPI */
+.kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:1px;background:var(--ln);border:1px solid var(--ln);border-radius:13px;overflow:hidden;margin-bottom:16px}
+.kc{background:var(--pane);padding:16px 18px;position:relative}
+.kc:before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--acc,transparent),transparent);opacity:.5}
+.kk{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3);margin-bottom:9px;font-weight:600}
+.kv{font-size:25px;font-weight:600;letter-spacing:-.04em;line-height:1}
+.ks{font-size:11px;color:var(--tx3);margin-top:7px}
+
+/* панели */
+.pn{background:var(--pane);border:1px solid var(--ln);border-radius:13px;padding:20px 22px;margin-bottom:14px}
+.pn.tight{padding:16px 18px}
+.ph{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:3px;flex-wrap:wrap}
+.pn h3{font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.pn .ps{font-size:12px;color:var(--tx3);margin-bottom:16px;line-height:1.55}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:920px){.g2{grid-template-columns:1fr}}
+
+.vd{font-size:23px;font-weight:600;letter-spacing:-.03em;line-height:1.28;margin-bottom:13px;
+  background:linear-gradient(100deg,var(--tx) 30%,var(--gd));-webkit-background-clip:text;background-clip:text;color:transparent}
+.pr{font-size:14.5px;color:var(--tx2);line-height:1.72}
+.pr b{color:var(--tx);font-weight:600}
+.ul{list-style:none;display:grid;gap:12px;margin-top:6px}
+.ul li{font-size:13.5px;color:var(--tx2);padding-left:17px;position:relative;line-height:1.6}
+.ul li:before{content:"";position:absolute;left:0;top:8px;width:5px;height:5px;border-radius:50%;background:var(--dot,var(--tx3))}
 
 /* шкала диапазона */
-.strip{margin-bottom:15px}
-.strip-hd{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin-bottom:3px;flex-wrap:wrap}
-.strip-nm{font-size:14.5px;font-weight:600}
-.strip-rl{font-size:12px;color:var(--mut);margin-bottom:12px}
-.track{position:relative;height:38px;background:linear-gradient(90deg,rgba(255,107,94,.14),rgba(97,109,128,.05) 45%,rgba(97,109,128,.05) 55%,rgba(61,214,140,.14));border:1px solid var(--line);border-radius:8px}
-.gl{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.045)}
-.gh{position:absolute;top:50%;transform:translate(-50%,-50%);width:2px;height:13px;background:var(--ink2);opacity:.28;border-radius:1px}
-.nw{position:absolute;top:50%;transform:translate(-50%,-50%);width:4px;height:26px;border-radius:2px;box-shadow:0 0 0 3px var(--surf),0 0 16px currentColor}
-.tfoot{display:flex;justify-content:space-between;margin-top:7px;font-size:10.5px;color:var(--mut)}
+.st{margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--ln)}
+.st:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
+.sth{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin-bottom:2px;flex-wrap:wrap}
+.stn{font-size:14.5px;font-weight:600}
+.str{font-size:11.5px;color:var(--tx3);margin-bottom:13px}
+.trk{position:relative;height:40px;border-radius:8px;border:1px solid var(--ln2);overflow:hidden;
+  background:linear-gradient(90deg,rgba(255,92,85,.16),rgba(90,100,120,.04) 42%,rgba(90,100,120,.04) 58%,rgba(38,217,127,.16))}
+.trk u{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.055)}
+.gh{position:absolute;top:50%;transform:translate(-50%,-50%);width:2px;height:14px;background:var(--tx2);opacity:.3;border-radius:1px}
+.nw{position:absolute;top:50%;transform:translate(-50%,-50%);width:3px;height:100%;border-radius:2px;box-shadow:0 0 14px currentColor}
+.nwl{position:absolute;top:50%;transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;box-shadow:0 0 0 3px var(--pane),0 0 18px currentColor}
+.tf{display:flex;justify-content:space-between;margin-top:8px;font-size:10.5px;color:var(--tx3)}
+.tf b{color:var(--tx);font-weight:600;font-family:'JetBrains Mono',monospace}
 
 /* аналоги */
-.acards{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:11px}
-.ac{background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:15px 16px}
-.ac .d{font-size:14px;font-weight:600}
-.ac .s{font-size:10.5px;color:var(--mut);margin-bottom:12px}
-.ac .r{font-size:23px;font-weight:600;letter-spacing:-.03em;line-height:1}
-.ac .l{font-size:11px;color:var(--mut);margin-top:4px}
+.acs{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:10px}
+.ac{background:var(--pane2);border:1px solid var(--ln2);border-radius:10px;padding:14px 15px;transition:.16s}
+.ac:hover{border-color:var(--ln2);background:var(--pane3);transform:translateY(-2px)}
+.ac .d{font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace}
+.ac .s{font-size:10px;color:var(--tx3);margin-bottom:11px}
+.ac .r{font-size:21px;font-weight:600;letter-spacing:-.035em;line-height:1}
+.ac .l{font-size:10.5px;color:var(--tx3);margin-top:4px}
 
-.bars{display:grid;gap:15px;margin:16px 0}
-.brow{display:grid;grid-template-columns:180px 1fr 54px;gap:14px;align-items:center}
-.brow .bl{font-size:13px;color:var(--ink2)}
-.btr{height:8px;background:var(--surf2);border-radius:4px;overflow:hidden}
-.bfl{height:100%;border-radius:4px}
-.bvl{text-align:right;font-size:13.5px;font-weight:600}
+.brs{display:grid;gap:13px;margin:4px 0 18px}
+.br{display:grid;grid-template-columns:186px 1fr 52px;gap:14px;align-items:center}
+@media(max-width:700px){.br{grid-template-columns:1fr;gap:5px}.br .bv{text-align:left}}
+.br .bl{font-size:12.5px;color:var(--tx2)}
+.bt{height:22px;background:var(--pane3);border-radius:5px;overflow:hidden;position:relative}
+.bf{height:100%;border-radius:5px;transition:width .8s cubic-bezier(.16,1,.3,1)}
+.bv{text-align:right;font-size:13.5px;font-weight:600}
 
-details{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);padding:16px 20px;margin:20px 0 40px}
-summary{cursor:pointer;font-weight:600;font-size:14.5px;list-style:none}
+details{background:var(--bg2);border:1px solid var(--ln);border-radius:13px;padding:15px 20px;margin:18px 0 46px}
+summary{cursor:pointer;font-weight:600;font-size:14px;list-style:none;color:var(--tx2)}
 summary::-webkit-details-marker{display:none}
-summary:before{content:"→ ";color:var(--gold)}
-details[open] summary:before{content:"↓ "}
+summary:before{content:"＋ ";color:var(--gd);font-weight:400}
+details[open] summary:before{content:"− "}
+details .ul{margin-top:15px}
 
-.dtable{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r)}
-.dtable table{min-width:1100px}
-.dtable td,.dtable th{font-size:12.5px;padding:8px 11px}
-.gpos{background:rgba(61,214,140,.09)} .gneg{background:rgba(255,107,94,.09)}
+.dtb{overflow-x:auto;border:1px solid var(--ln);border-radius:13px;background:var(--pane)}
+.dtb table{min-width:1180px}
+.dtb th,.dtb td{font-size:12px;padding:9px 12px}
+.dtb thead th{cursor:default}
+.gp{background:rgba(38,217,127,.07)}.gn{background:rgba(255,92,85,.07)}
 
-.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--mut)}
-.legend i{display:inline-block;width:11px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
-.warn{background:rgba(233,185,73,.09);border:1px solid rgba(233,185,73,.26);color:#E9C87A;padding:11px 15px;border-radius:9px;font-size:13px;margin-bottom:16px}
-footer{border-top:1px solid var(--line);margin-top:40px;padding:22px 0 50px;color:var(--mut);font-size:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.hidden{display:none}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.lgn{display:flex;gap:18px;flex-wrap:wrap;margin-top:13px;font-size:11.5px;color:var(--tx3)}
+.lgn i{display:inline-block;width:14px;height:2.5px;border-radius:2px;margin-right:7px;vertical-align:middle}
+footer{border-top:1px solid var(--ln);margin-top:44px;padding:24px 0 56px;color:var(--tx3);font-size:11.5px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 
 <header><div class="wrap hd">
-  <div class="logo">COT<span>состояние рынка</span></div>
-  <div class="segbar" id="sectors"></div>
-  <div class="spacer"></div>
-  <input class="search" id="search" placeholder="Поиск инструмента…" aria-label="Поиск">
+  <div class="lg"><span class="lgd"></span>COT<em>состояние рынка</em></div>
+  <div class="sgs" id="sec"></div>
+  <div class="sp"></div>
+  <input class="inp" id="q" placeholder="Поиск инструмента…" aria-label="Поиск">
 </div></header>
 
 <main class="wrap">
-  <div id="banner"></div>
-  <div id="screener"></div>
-  <div id="detail" class="hidden"></div>
+  <div id="ban"></div>
+  <div id="scr"></div>
+  <div id="det" class="hide"></div>
 </main>
 
-<footer class="wrap">
-  <span id="built"></span>
-  <span>Источник: CFTC · котировки FRED</span>
-</footer>
+<footer class="wrap"><span id="bt"></span><span>CFTC · котировки FRED</span></footer>
 
 <script>
-const DATA = /*__DATA__*/null;
-let sector="ALL", query="", sortKey="pct", sortDir=-1;
-let cur=null, tab="dash", horizon="8", period=104, participantView=null;
+const DATA=/*__DATA__*/null;
+let sec="ALL",q="",sk="pct",sd=-1,cur=null,tab="dash",hz="8",per=104;
 
-const $=id=>document.getElementById(id);
-const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const md=s=>esc(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>");
+const $=i=>document.getElementById(i);
+const E=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const M=s=>E(s).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>");
 const pc=(x,d=1)=>x==null?"—":(x*100).toFixed(d)+"%";
 const sp=(x,d=1)=>x==null?"—":(x>=0?"+":"")+(x*100).toFixed(d)+"%";
 const nm=x=>x==null?"—":Math.round(x).toLocaleString("ru-RU").replace(/,/g," ");
 const sn=x=>x==null?"—":(x>=0?"+":"")+Math.round(x).toLocaleString("ru-RU").replace(/,/g," ");
-const tn=x=>x==null?"":(x>0?"up":(x<0?"down":""));
-const zc=p=>p>=80?"var(--up)":(p<=20?"var(--down)":"var(--gold)");
-const spec=m=>m.participants.find(p=>p.is_spec)||{};
-const slow=m=>m.participants.find(p=>p.is_slow)||{};
+const tn=x=>x==null?"":(x>0?"up":x<0?"dn":"");
+const zc=p=>p==null?"var(--tx3)":p>=80?"var(--up)":p<=20?"var(--dn)":"var(--gd)";
+const SPEC=m=>m.participants.find(p=>p.is_spec)||{};
+const SLOW=m=>m.participants.find(p=>p.is_slow)||{};
 
-/* ══ СКРИНЕР ══ */
-function sectors(){
-  const cnt={}; DATA.markets.forEach(m=>cnt[m.sector]=(cnt[m.sector]||0)+1);
-  const list=[["ALL","Все",DATA.markets.length],...Object.entries(DATA.sectors)
-    .filter(([k])=>cnt[k]).map(([k,v])=>[k,v,cnt[k]])];
-  $("sectors").innerHTML=list.map(([k,l,c])=>
-    `<button class="seg${k===sector?" on":""}" data-s="${k}">${esc(l)}<span class="cnt">${c}</span></button>`).join("");
-  $("sectors").querySelectorAll(".seg").forEach(b=>b.onclick=()=>{sector=b.dataset.s;renderScreener();sectors();});
+/* ─── графики: оси, сетка, свечение ─── */
+const W=1000,PL=52,PR=14;
+function scale(vals,h,pt,pb){
+  const v=vals.filter(x=>x!=null);
+  if(!v.length)return null;
+  let mn=Math.min(...v),mx=Math.max(...v);
+  if(mn===mx){mn-=1;mx+=1;}
+  const pad=(mx-mn)*.08; mn-=pad; mx+=pad;
+  return {mn,mx,y:val=>h-pb-((val-mn)/(mx-mn))*(h-pt-pb)};
 }
-
-const COLS=[
-  ["name","Инструмент"],["sector","Сектор"],["net","Чистая позиция"],["pct","Перцентиль"],
-  ["z","Z-score"],["chg","Δ за неделю"],["oi","Откр. интерес"],["badge","Сигнал"],["date","Дата"]
-];
-
-function rowVals(m){
-  const s=spec(m);
-  return {name:m.name,sector:m.sector,net:s.net,pct:s.pct_52w,z:s.z_52w,
-          chg:s.chg_1w,oi:m.open_interest,badge:m.badge,date:m.report_date};
+function fmtAx(v,kind){
+  if(kind==="k")return Math.abs(v)>=1000?(v/1000).toFixed(0)+"K":v.toFixed(0);
+  if(kind==="p")return v.toFixed(v<10?2:0);
+  return v.toFixed(1);
 }
-
-function renderScreener(){
-  $("detail").classList.add("hidden"); $("screener").classList.remove("hidden");
-  let list=DATA.markets.filter(m=>(sector==="ALL"||m.sector===sector) &&
-    (!query||m.name.toLowerCase().includes(query)||m.code.toLowerCase().includes(query)||(m.symbol||"").toLowerCase().includes(query)));
-  list.sort((a,b)=>{
-    const x=rowVals(a)[sortKey],y=rowVals(b)[sortKey];
-    if(x==null)return 1; if(y==null)return -1;
-    return typeof x==="string"?sortDir*x.localeCompare(y,"ru"):(x>y?sortDir:x<y?-sortDir:0);
-  });
-
-  $("screener").innerHTML=`
-  <div class="scr-head">
-    <h1>Скринер позиционирования</h1>
-    <p>Все рынки в одной таблице. «Перцентиль» показывает, где чистая позиция быстрых спекулятивных денег
-       находится внутри собственного диапазона за год: 0 — исторический минимум, 100 — максимум.
-       Нажмите на строку, чтобы открыть подробный разбор.</p>
-  </div>
-  <div class="tblwrap"><table>
-    <thead><tr>${COLS.map(([k,l])=>`<th data-k="${k}" class="${k===sortKey?"sorted":""}">${l}${k===sortKey?(sortDir<0?" ↓":" ↑"):""}</th>`).join("")}</tr></thead>
-    <tbody>${list.map(m=>{const s=spec(m),p=s.pct_52w;return `
-      <tr data-c="${m.code}">
-        <td><div class="mname">${esc(m.name)}</div><div class="msym mono">${esc(m.symbol)}</div></td>
-        <td><span class="sect">${esc(DATA.sectors[m.sector]||m.sector)}</span></td>
-        <td class="mono ${tn(s.net)}">${sn(s.net)}</td>
-        <td><span class="pbar"><span class="ptrack">${p==null?"":`<span class="pfill" style="width:${Math.max(2,Math.min(100,p))}%;background:${zc(p)}"></span>`}</span>
-            <span class="mono">${p==null?"—":Math.round(p)}</span></span></td>
-        <td class="mono ${tn(s.z_52w)}">${s.z_52w==null?"—":(s.z_52w>=0?"+":"")+s.z_52w.toFixed(2)}</td>
-        <td class="mono ${tn(s.chg_1w)}">${sn(s.chg_1w)}</td>
-        <td class="mono mut">${nm(m.open_interest)}</td>
-        <td><span class="badge b-${m.badge_kind}">${esc(m.badge)}</span></td>
-        <td class="mono mut">${esc(m.report_date)}</td>
-      </tr>`;}).join("")}</tbody>
-  </table></div>`;
-
-  $("screener").querySelectorAll("thead th").forEach(th=>th.onclick=()=>{
-    const k=th.dataset.k; sortDir=(sortKey===k)?-sortDir:-1; sortKey=k; renderScreener();});
-  $("screener").querySelectorAll("tbody tr").forEach(tr=>tr.onclick=()=>openMarket(tr.dataset.c));
+function grid(s,h,pt,pb,kind){
+  if(!s)return "";
+  let o="";
+  for(let i=0;i<=3;i++){
+    const val=s.mn+(s.mx-s.mn)*i/3, y=s.y(val);
+    o+=`<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" stroke="#1A1F2B" stroke-width="1"/>`;
+    o+=`<text x="${PL-8}" y="${(y+3.5).toFixed(1)}" text-anchor="end" fill="#5A6478" font-size="10" font-family="JetBrains Mono,monospace">${fmtAx(val,kind)}</text>`;
+  }
+  return o;
 }
-
-/* ══ ГРАФИКИ (свой SVG, без библиотек) ══ */
-function line(pts,w,h,pad,color,fill){
-  const vals=pts.filter(v=>v!=null);
-  if(vals.length<2)return "";
-  const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
-  const st=(w-pad*2)/Math.max(pts.length-1,1);
-  let d="",area="";
-  pts.forEach((v,i)=>{if(v==null)return;
-    const x=pad+i*st,y=h-pad-((v-mn)/rg)*(h-pad*2);
+function path(vals,s,h,glow,color,fill){
+  if(!s)return "";
+  const st=(W-PL-PR)/Math.max(vals.length-1,1);
+  let d="",first=null,last=null;
+  vals.forEach((v,i)=>{if(v==null)return;
+    const x=PL+i*st,y=s.y(v);
+    if(first===null)first=x; last=x;
     d+=(d?"L":"M")+x.toFixed(1)+","+y.toFixed(1)+" ";});
-  if(fill){const f=pts.findIndex(v=>v!=null);
-    area=`<path d="${d}L${(pad+(pts.length-1)*st).toFixed(1)},${h-pad} L${(pad+f*st).toFixed(1)},${h-pad} Z" fill="${color}" opacity=".08"/>`;}
-  return area+`<path d="${d}" fill="none" stroke="${color}" stroke-width="1.7" stroke-linejoin="round"/>`;
+  if(!d)return "";
+  let o="";
+  if(fill)o+=`<path d="${d}L${last.toFixed(1)},${h} L${first.toFixed(1)},${h} Z" fill="url(#gr${fill})"/>`;
+  if(glow)o+=`<path d="${d}" fill="none" stroke="${color}" stroke-width="4" opacity=".18" filter="url(#bl)"/>`;
+  return o+`<path d="${d}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`;
 }
-function zeroLine(pts,w,h,pad){
-  const vals=pts.filter(v=>v!=null); if(!vals.length)return "";
-  const mn=Math.min(...vals),mx=Math.max(...vals);
-  if(mn>0||mx<0)return "";
-  const y=h-pad-((0-mn)/((mx-mn)||1))*(h-pad*2);
-  return `<line x1="${pad}" y1="${y.toFixed(1)}" x2="${w-pad}" y2="${y.toFixed(1)}" stroke="var(--line2)" stroke-dasharray="3 3"/>`;
+function zline(s,h){
+  if(!s||s.mn>0||s.mx<0)return "";
+  const y=s.y(0);
+  return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W-PR}" y2="${y.toFixed(1)}" stroke="#252C3B" stroke-dasharray="4 4"/>`;
 }
-function bars(pts,w,h,pad){
-  const vals=pts.filter(v=>v!=null); if(!vals.length)return "";
-  const mx=Math.max(...vals.map(Math.abs))||1;
-  const bw=Math.max(1,(w-pad*2)/pts.length-1);
-  const mid=h/2;
-  return pts.map((v,i)=>{if(v==null)return"";
-    const x=pad+i*((w-pad*2)/pts.length);
-    const bh=Math.abs(v)/mx*(h/2-pad);
-    return `<rect x="${x.toFixed(1)}" y="${(v>=0?mid-bh:mid).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(bh,.5).toFixed(1)}" fill="${v>=0?"var(--up)":"var(--down)"}" opacity=".75"/>`;
-  }).join("")+`<line x1="${pad}" y1="${mid}" x2="${w-pad}" y2="${mid}" stroke="var(--line2)"/>`;
+function svg(h,inner){
+  return `<svg viewBox="0 0 ${W} ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img">
+    <defs><filter id="bl"><feGaussianBlur stdDeviation="4"/></filter>
+      <linearGradient id="grgd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F0B429" stop-opacity=".22"/><stop offset="1" stop-color="#F0B429" stop-opacity="0"/></linearGradient>
+      <linearGradient id="grwt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2F4F8" stop-opacity=".12"/><stop offset="1" stop-color="#F2F4F8" stop-opacity="0"/></linearGradient>
+    </defs>${inner}</svg>`;
 }
-function chart(inner,h=150){return `<svg viewBox="0 0 760 ${h}" width="100%" height="${h}" preserveAspectRatio="none" role="img">${inner}</svg>`;}
-function axis(hist){
-  if(!hist.length)return "";
-  const f=hist[0].d,l=hist[hist.length-1].d;
-  return `<div class="tfoot"><span class="mono">${esc(f)}</span><span class="mono">${esc(l)}</span></div>`;
+function dateAxis(hist){
+  if(hist.length<2)return "";
+  const n=Math.min(6,hist.length),out=[];
+  for(let i=0;i<n;i++){
+    const idx=Math.round(i*(hist.length-1)/(n-1));
+    out.push(hist[idx].d.slice(0,7));
+  }
+  return `<div style="display:flex;justify-content:space-between;padding:0 ${PR}px 0 ${PL}px;margin-top:7px;font-size:10px;color:var(--tx3);font-family:'JetBrains Mono',monospace">${out.map(d=>`<span>${E(d)}</span>`).join("")}</div>`;
+}
+function barsChart(vals,h){
+  const v=vals.filter(x=>x!=null);
+  if(!v.length)return svg(h,"");
+  const mx=Math.max(...v.map(Math.abs))||1,mid=h/2;
+  const bw=Math.max(1.4,(W-PL-PR)/vals.length*.68);
+  let o=`<line x1="${PL}" y1="${mid}" x2="${W-PR}" y2="${mid}" stroke="#252C3B"/>`;
+  o+=`<text x="${PL-8}" y="${mid+3.5}" text-anchor="end" fill="#5A6478" font-size="10" font-family="JetBrains Mono,monospace">0</text>`;
+  vals.forEach((val,i)=>{if(val==null)return;
+    const x=PL+i*((W-PL-PR)/vals.length),bh=Math.abs(val)/mx*(h/2-6);
+    o+=`<rect x="${x.toFixed(1)}" y="${(val>=0?mid-bh:mid).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(bh,.8).toFixed(1)}" rx="1" fill="${val>=0?"#26D97F":"#FF5C55"}" opacity=".8"/>`;});
+  return svg(h,o);
 }
 
-/* ══ ДЕТАЛЬ ══ */
-function openMarket(code){
-  cur=DATA.markets.find(m=>m.code===code); tab="dash";
-  participantView=cur.spec_key;
-  $("screener").classList.add("hidden"); $("detail").classList.remove("hidden");
-  renderDetail(); window.scrollTo({top:0,behavior:"smooth"});
+/* ─── скринер ─── */
+function drawSec(){
+  const c={};DATA.markets.forEach(m=>c[m.sector]=(c[m.sector]||0)+1);
+  const L=[["ALL","Все",DATA.markets.length],...Object.entries(DATA.sectors).filter(([k])=>c[k]).map(([k,v])=>[k,v,c[k]])];
+  $("sec").innerHTML=L.map(([k,l,n])=>`<button class="sg${k===sec?" on":""}" data-s="${k}">${E(l)}<b>${n}</b></button>`).join("");
+  $("sec").querySelectorAll(".sg").forEach(b=>b.onclick=()=>{sec=b.dataset.s;drawSec();drawScr();});
 }
+const COLS=[["name","Инструмент"],["sector","Сектор"],["net","Чистая позиция"],["pct","Перцентиль"],["z","Z-score"],["chg","Δ за неделю"],["oi","Откр. интерес"],["badge","Сигнал"],["date","Дата"]];
+const RV=m=>{const s=SPEC(m);return{name:m.name,sector:m.sector,net:s.net,pct:s.pct_52w,z:s.z_52w,chg:s.chg_1w,oi:m.open_interest,badge:m.badge,date:m.report_date};};
 
-const TABS=[["dash","Обзор"],["strips","Диапазоны"],["analogs","История"],["net","Чистые позиции"],["table","Таблица"]];
+function drawScr(){
+  $("det").classList.add("hide");$("scr").classList.remove("hide");
+  const L=DATA.markets.filter(m=>(sec==="ALL"||m.sector===sec)&&(!q||m.name.toLowerCase().includes(q)||m.code.toLowerCase().includes(q)||(m.symbol||"").toLowerCase().includes(q)))
+    .sort((a,b)=>{const x=RV(a)[sk],y=RV(b)[sk];
+      if(x==null)return 1;if(y==null)return -1;
+      return typeof x==="string"?sd*x.localeCompare(y,"ru"):x>y?sd:x<y?-sd:0;});
 
-function renderDetail(){
-  const m=cur,S=m.sections[horizon],st=m.horizon_stats[horizon]||{};
-  const s=spec(m),l=slow(m);
-  const hist=m.history.slice(-period);
-
-  $("detail").innerHTML=`
-  <div class="crumb">
-    <button id="back">← К скринеру</button><span>/</span><span>${esc(DATA.sectors[m.sector]||m.sector)}</span>
-    <span class="chip">${esc(m.report==="tff"?"TFF":"Disaggregated")}</span>
-    <span class="chip">отчёт ${esc(m.report_date)}</span>
-    <span class="chip">опубликован ${esc(m.published)}</span>
-    ${s.pct_52w!=null?`<span class="chip ${s.pct_52w<=20?"red":s.pct_52w>=80?"grn":""}">${Math.round(s.pct_52w)}-й перцентиль</span>`:""}
-    ${s.z_52w!=null?`<span class="chip ${s.z_52w<-1?"red":s.z_52w>1?"grn":""}">Z ${s.z_52w.toFixed(2)}</span>`:""}
+  $("scr").innerHTML=`
+  <div style="padding:32px 0 0">
+    <div class="eyb">обзор рынков · ${DATA.markets.length} инструментов</div>
+    <div class="h1">Скринер позиционирования</div>
+    <p class="sub">Колонка «Перцентиль» показывает, где чистая позиция быстрых спекулятивных денег стоит
+      внутри собственного диапазона за год: 0 — исторический минимум, 100 — максимум. Крайние значения
+      означают переполненную позицию, а не сигнал. Нажмите на строку для разбора.</p>
   </div>
-  <div class="dt-title">${esc(m.name)}</div>
-  <div class="dt-sub mono">${esc(m.symbol)} · режим: ${esc(m.regime)}</div>
-
-  <div class="tabbar">${TABS.map(([k,t])=>`<button class="tab${k===tab?" on":""}" data-t="${k}">${t}</button>`).join("")}</div>
-
-  <div class="ctrls">
-    <span class="ctrl-lbl">Горизонт</span>
-    <div class="segbar">${["4","8","12"].map(h=>`<button class="seg${h===horizon?" on":""}" data-h="${h}">${h} нед.</button>`).join("")}</div>
-    <span class="ctrl-lbl">Период графиков</span>
-    <div class="segbar">${[[26,"6М"],[52,"1Г"],[104,"2Г"],[156,"3Г"],[261,"5Л"]].map(([v,t])=>`<button class="seg${v===period?" on":""}" data-p="${v}">${t}</button>`).join("")}</div>
-  </div>
-
-  ${!m.has_analogs?`<div class="warn">Для этого рынка нет подходящего дневного ценового ряда, поэтому исторические аналоги и форвардные доходности не считаются. Позиционирование, перцентили, режимы и графики позиций работают полностью.</div>`:""}
-
-  <div id="pane"></div>`;
-
-  $("back").onclick=()=>renderScreener();
-  $("detail").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{tab=b.dataset.t;renderDetail();});
-  $("detail").querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{horizon=b.dataset.h;renderDetail();});
-  $("detail").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{period=+b.dataset.p;renderDetail();});
-
-  $("pane").innerHTML=({dash:paneDash,strips:paneStrips,analogs:paneAnalogs,net:paneNet,table:paneTable})[tab](m,S,st,hist);
-  if(tab==="analogs")$("pane").querySelectorAll(".ac").forEach(()=>{});
+  <div class="tbx"><div class="tsc"><table>
+    <thead><tr>${COLS.map(([k,l])=>`<th data-k="${k}" class="${k===sk?"srt":""}">${l}${k===sk?(sd<0?" ↓":" ↑"):""}</th>`).join("")}</tr></thead>
+    <tbody>${L.map(m=>{const s=SPEC(m),p=s.pct_52w;return `<tr data-c="${m.code}">
+      <td><div class="inm">${E(m.name)}</div><div class="isy mn">${E(m.symbol)}</div></td>
+      <td><span class="sct">${E(DATA.sectors[m.sector]||m.sector)}</span></td>
+      <td class="mn ${tn(s.net)}">${sn(s.net)}</td>
+      <td><span class="pb"><span class="pt"><u></u>${p==null?"":`<i style="left:${Math.max(1.5,Math.min(97,p))}%;background:${zc(p)};color:${zc(p)}"></i>`}</span><span class="mn" style="width:22px;display:inline-block">${p==null?"—":Math.round(p)}</span></span></td>
+      <td class="mn ${tn(s.z_52w)}">${s.z_52w==null?"—":(s.z_52w>=0?"+":"")+s.z_52w.toFixed(2)}</td>
+      <td class="mn ${tn(s.chg_1w)}">${sn(s.chg_1w)}</td>
+      <td class="mn t3">${nm(m.open_interest)}</td>
+      <td><span class="bdg b-${m.badge_kind}">${E(m.badge)}</span></td>
+      <td class="mn t3">${E(m.report_date)}</td></tr>`;}).join("")||`<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--tx3)">Ничего не найдено</td></tr>`}</tbody>
+  </table></div></div>`;
+  $("scr").querySelectorAll("thead th").forEach(t=>t.onclick=()=>{const k=t.dataset.k;sd=(sk===k)?-sd:-1;sk=k;drawScr();});
+  $("scr").querySelectorAll("tbody tr[data-c]").forEach(t=>t.onclick=()=>open(t.dataset.c));
 }
 
-function paneDash(m,S,st,hist){
-  const s=spec(m),l=slow(m);
+/* ─── деталь ─── */
+function open(code){cur=DATA.markets.find(m=>m.code===code);tab="dash";
+  $("scr").classList.add("hide");$("det").classList.remove("hide");draw();window.scrollTo({top:0,behavior:"smooth"});}
+const TABS=[["dash","Обзор"],["strips","Диапазоны"],["hist","История"],["net","Чистые позиции"],["tbl","Таблица"]];
+
+function draw(){
+  const m=cur,S=m.sections[hz],st=m.horizon_stats[hz]||{},s=SPEC(m),h=m.history.slice(-per);
+  $("det").innerHTML=`<div class="dhd">
+    <div class="crm"><button id="bk">← Все рынки</button><span>/</span><span>${E(DATA.sectors[m.sector]||m.sector)}</span>
+      <span class="cp">${E(m.report==="tff"?"TFF":"Disaggregated")}</span>
+      <span class="cp">данные ${E(m.report_date)}</span><span class="cp">публикация ${E(m.published)}</span>
+      ${s.pct_52w!=null?`<span class="cp ${s.pct_52w<=20?"r":s.pct_52w>=80?"g":""}">${Math.round(s.pct_52w)} перцентиль</span>`:""}
+      ${s.z_52w!=null?`<span class="cp ${s.z_52w<-1?"r":s.z_52w>1?"g":""}">Z ${s.z_52w.toFixed(2)}</span>`:""}</div>
+    <div class="dttl"><h1>${E(m.name)}</h1><span class="sy">${E(m.symbol)}</span></div>
+    <div class="drg">Режим позиционирования: <b style="color:var(--tx)">${E(m.regime)}</b></div>
+    <div class="tbs">${TABS.map(([k,t])=>`<button class="tb${k===tab?" on":""}" data-t="${k}">${t}</button>`).join("")}</div>
+    <div class="ctl"><span class="cl">Горизонт</span>
+      <div class="sgs">${["4","8","12"].map(x=>`<button class="sg${x===hz?" on":""}" data-h="${x}">${x} нед.</button>`).join("")}</div>
+      <span class="cl">Период</span>
+      <div class="sgs">${[[26,"6М"],[52,"1Г"],[104,"2Г"],[156,"3Г"],[261,"5Л"]].map(([v,t])=>`<button class="sg${v===per?" on":""}" data-p="${v}">${t}</button>`).join("")}</div></div>
+    ${!m.has_analogs?`<div class="alert a-gd">Для этого рынка у FRED нет дневного ценового ряда, поэтому исторические аналоги и форвардные доходности не рассчитываются. Позиционирование, перцентили, режимы и все графики позиций работают полностью.</div>`:""}
+    <div id="pn"></div></div>`;
+  $("bk").onclick=drawScr;
+  $("det").querySelectorAll(".tb").forEach(b=>b.onclick=()=>{tab=b.dataset.t;draw();});
+  $("det").querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{hz=b.dataset.h;draw();});
+  $("det").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{per=+b.dataset.p;draw();});
+  $("pn").innerHTML=({dash:pDash,strips:pStrips,hist:pHist,net:pNet,tbl:pTbl})[tab](m,S,st,h);
+}
+
+function pDash(m,S,st,h){
+  const s=SPEC(m),l=SLOW(m);
+  const pv=h.map(x=>x.p),nv=h.map(x=>x[m.spec_key]),zv=h.map(x=>x.z);
+  const ps=scale(pv,150,10,18),ns=scale(nv,110,8,16),zs=scale(zv,84,8,14);
   return `
-  <div class="kpis">
-    <div class="kpi"><div class="k">${esc(s.label)}</div><div class="v mono ${tn(s.net_oi)}">${pc(s.net_oi)}</div><div class="s mono">${sn(s.net)} контр.</div></div>
-    <div class="kpi"><div class="k">${esc(l.label)}</div><div class="v mono ${tn(l.net_oi)}">${pc(l.net_oi)}</div><div class="s mono">${sn(l.net)} контр.</div></div>
-    <div class="kpi"><div class="k">Откр. интерес</div><div class="v mono">${nm(m.open_interest)}</div><div class="s">всего контрактов</div></div>
-    ${m.has_price?`<div class="kpi"><div class="k">Цена за 4 нед.</div><div class="v mono ${tn(m.price_chg_4w)}">${sp(m.price_chg_4w)}</div><div class="s mono">8 нед. ${sp(m.price_chg_8w)}</div></div>`:""}
-    ${st.edge_pp!=null?`<div class="kpi"><div class="k">Перевес ${horizon} нед.</div><div class="v mono ${tn(st.edge_pp)}">${(st.edge_pp>=0?"+":"")+st.edge_pp.toFixed(1)} п.п.</div><div class="s mono">N = ${st.n}</div></div>`:""}
+  <div class="kp">
+    <div class="kc" style="--acc:${s.net_oi>=0?"var(--up)":"var(--dn)"}"><div class="kk">${E(s.label)}</div><div class="kv mn ${tn(s.net_oi)}">${pc(s.net_oi)}</div><div class="ks mn">${sn(s.net)} контрактов</div></div>
+    <div class="kc" style="--acc:${l.net_oi>=0?"var(--up)":"var(--dn)"}"><div class="kk">${E(l.label)}</div><div class="kv mn ${tn(l.net_oi)}">${pc(l.net_oi)}</div><div class="ks mn">${sn(l.net)} контрактов</div></div>
+    <div class="kc"><div class="kk">Открытый интерес</div><div class="kv mn">${nm(m.open_interest)}</div><div class="ks">всего контрактов</div></div>
+    ${m.has_price?`<div class="kc" style="--acc:var(--cy)"><div class="kk">Цена · 4 недели</div><div class="kv mn ${tn(m.price_chg_4w)}">${sp(m.price_chg_4w)}</div><div class="ks mn">8 нед. ${sp(m.price_chg_8w)}</div></div>`:""}
+    ${st.edge_pp!=null?`<div class="kc" style="--acc:var(--vi)"><div class="kk">Перевес · ${hz} нед.</div><div class="kv mn ${tn(st.edge_pp)}">${(st.edge_pp>=0?"+":"")+st.edge_pp.toFixed(1)}<span style="font-size:14px"> п.п.</span></div><div class="ks mn">выборка N = ${st.n}</div></div>`:""}
   </div>
 
-  <div class="card">
-    <div class="verdict">${esc(S.configuration_name)}</div>
-    <div class="prose">${md(S.configuration_text)}</div>
-  </div>
+  <div class="pn"><div class="vd">${E(S.configuration_name)}</div><div class="pr">${M(S.configuration_text)}</div></div>
 
-  ${m.has_price?`<div class="card">
-    <h3>Цена и позиционирование</h3>
-    <div class="sub">Общая ось времени. Сверху цена, ниже чистая позиция «${esc(s.label.toLowerCase())}», затем z-score отклонения.</div>
-    ${chart(line(hist.map(h=>h.p),760,120,6,"#EDF0F5"),120)}
-    ${chart(zeroLine(hist.map(h=>h[m.spec_key]),760,90,6)+line(hist.map(h=>h[m.spec_key]),760,90,6,"var(--gold)",true),90)}
-    ${chart(zeroLine(hist.map(h=>h.z),760,70,6)+line(hist.map(h=>h.z),760,70,6,"var(--cy)"),70)}
-    ${axis(hist)}
-    <div class="legend"><span><i style="background:#EDF0F5"></i>Цена</span><span><i style="background:var(--gold)"></i>Чистая позиция</span><span><i style="background:var(--cy)"></i>Z-score</span></div>
+  ${m.has_price?`<div class="pn">
+    <div class="ph"><h3>Цена и позиционирование</h3><span class="t3" style="font-size:11px">общая ось времени</span></div>
+    <div class="ps">Сверху цена, ниже чистая позиция «${E(s.label.toLowerCase())}», внизу z-score — насколько позиция отклонилась от своей нормы.</div>
+    ${svg(150,grid(ps,150,10,18,"p")+path(pv,ps,150,1,"#F2F4F8","wt"))}
+    ${svg(110,grid(ns,110,8,16,"k")+zline(ns,110)+path(nv,ns,110,1,"#F0B429","gd"))}
+    ${svg(84,grid(zs,84,8,14,"z")+zline(zs,84)+path(zv,zs,84,0,"#3ECFDA"))}
+    ${dateAxis(h)}
+    <div class="lgn"><span><i style="background:#F2F4F8"></i>Цена</span><span><i style="background:#F0B429"></i>Чистая позиция</span><span><i style="background:#3ECFDA"></i>Z-score</span></div>
   </div>`:""}
 
-  <div class="card">
-    <h3>Поток позиций</h3>
-    <div class="sub">Изменение чистой позиции неделя к неделе. Зелёное — набирают, красное — сокращают.</div>
-    ${chart(bars(hist.map((h,i)=>i?((h[m.spec_key]??0)-(hist[i-1][m.spec_key]??0)):null),760,110,6),110)}
-    ${axis(hist)}
+  <div class="pn"><div class="ph"><h3>Поток позиций</h3></div>
+    <div class="ps">Изменение чистой позиции неделя к неделе. Зелёное — набирают, красное — сокращают. Устойчивая серия одного цвета информативнее одиночного всплеска.</div>
+    ${barsChart(h.map((x,i)=>i?((x[m.spec_key]??0)-(h[i-1][m.spec_key]??0)):null),120)}
+    ${dateAxis(h)}</div>
+
+  ${S.extremes.length?`<div class="pn"><h3>Сейчас в крайности</h3><ul class="ul" style="--dot:var(--gd)">${S.extremes.map(e=>`<li>${M(e)}</li>`).join("")}</ul></div>`:""}
+
+  <div class="g2">
+    <div class="pn"><h3>Что подтвердит вывод</h3><ul class="ul" style="--dot:var(--up)">${S.confirm.map(x=>`<li>${E(x)}</li>`).join("")}</ul></div>
+    <div class="pn"><h3>Что его опровергнет</h3><ul class="ul" style="--dot:var(--dn)">${S.invalidate.map(x=>`<li>${E(x)}</li>`).join("")}</ul></div>
   </div>
-
-  ${S.extremes.length?`<div class="card"><h3>Сейчас в крайности</h3><ul class="lst">${S.extremes.map(e=>`<li>${md(e)}</li>`).join("")}</ul></div>`:""}
-
-  <div class="grid2">
-    <div class="card"><h3>Что подтвердит вывод</h3><ul class="lst">${S.confirm.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
-    <div class="card"><h3>Что его опровергнет</h3><ul class="lst">${S.invalidate.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>
-  </div>
-
-  <details><summary>Что важно понимать об этих данных</summary>
-    <ul class="lst">${S.caveats.map(c=>`<li>${esc(c)}</li>`).join("")}</ul></details>`;
+  <details><summary>Что важно понимать об этих данных</summary><ul class="ul">${S.caveats.map(c=>`<li>${E(c)}</li>`).join("")}</ul></details>`;
 }
 
-function paneStrips(m,S){
+function pStrips(m){
   const gh=(m.analog_percentiles||[]).filter(x=>x!=null);
-  return `<div class="card">
-    <h3>Где мы внутри исторического диапазона</h3>
-    <div class="sub">Число контрактов само по себе не говорит ни о чём, пока не видно, где оно внутри
-      собственного диапазона за три года. Яркая метка — сейчас, бледные — где были похожие ситуации.</div>
-    ${m.participants.filter(p=>p.pct_52w!=null).map(p=>`
-      <div class="strip">
-        <div class="strip-hd"><span class="strip-nm">${esc(p.label)}</span>
-          <span class="mono ${tn(p.net_oi)}" style="font-size:17px;font-weight:600">${pc(p.net_oi)}</span></div>
-        <div class="strip-rl">${esc(p.role)} · ${sn(p.net)} контрактов</div>
-        <div class="track"><div class="gl" style="left:20%"></div><div class="gl" style="left:50%"></div><div class="gl" style="left:80%"></div>
-          ${p.is_spec?gh.map(g=>`<div class="gh" style="left:${Math.max(0,Math.min(100,g))}%"></div>`).join(""):""}
-          <div class="nw" style="left:${Math.max(0,Math.min(100,p.pct_52w))}%;background:${zc(p.pct_52w)};color:${zc(p.pct_52w)}"></div></div>
-        <div class="tfoot"><span>минимум за 3 года</span>
-          <span class="mono" style="color:var(--ink);font-weight:600">${Math.round(p.pct_52w)}-й перцентиль</span><span>максимум</span></div>
-      </div>`).join("")}
-  </div>`;
+  return `<div class="pn"><h3>Где мы внутри исторического диапазона</h3>
+    <div class="ps">Число контрактов само по себе не значит ничего, пока не видно, где оно внутри собственного
+      диапазона за три года. Яркая метка — сейчас, бледные штрихи — где были похожие ситуации в прошлом.</div>
+    ${m.participants.filter(p=>p.pct_52w!=null).map(p=>`<div class="st">
+      <div class="sth"><span class="stn">${E(p.label)}</span><span class="mn ${tn(p.net_oi)}" style="font-size:17px;font-weight:600">${pc(p.net_oi)}</span></div>
+      <div class="str">${E(p.role)} · ${sn(p.net)} контрактов${p.z_52w!=null?` · Z ${p.z_52w.toFixed(2)}`:""}</div>
+      <div class="trk"><u style="left:20%"></u><u style="left:50%"></u><u style="left:80%"></u>
+        ${p.is_spec?gh.map(g=>`<div class="gh" style="left:${Math.max(0,Math.min(100,g))}%"></div>`).join(""):""}
+        <div class="nw" style="left:${Math.max(.5,Math.min(99.5,p.pct_52w))}%;background:${zc(p.pct_52w)};color:${zc(p.pct_52w)}"></div>
+        <div class="nwl" style="left:${Math.max(.5,Math.min(99.5,p.pct_52w))}%;background:${zc(p.pct_52w)};color:${zc(p.pct_52w)}"></div></div>
+      <div class="tf"><span>минимум за 3 года</span><b>${Math.round(p.pct_52w)}-й перцентиль</b><span>максимум</span></div>
+    </div>`).join("")}</div>`;
 }
 
-function paneAnalogs(m,S,st){
-  if(!m.has_analogs)return `<div class="card"><div class="prose">Для этого рынка нет ценового ряда, поэтому исторические аналоги не рассчитываются.</div></div>`;
-  const shown=m.analogs.filter(a=>a.returns[horizon]!=null).slice(0,8);
-  const wr=st.win_rate,br=st.base_rate;
-  return `
-  <div class="card"><h3>Похожие моменты в прошлом</h3>
-    <div class="sub">${esc(st.sample_quality==="Insufficient sample size"
-      ?`Похожих ситуаций нашлось всего ${st.n} — слишком мало для выводов.`
-      :`Найдено ${st.n??"—"} похожих состояний. Ниже ближайшие по совпадению и то, что случилось через ${horizon} нед.`)}</div>
-    <div class="acards">${shown.map(a=>`<div class="ac"><div class="d">${esc(a.date)}</div>
-      <div class="s mono">совпадение ${a.similarity.toFixed(0)}</div>
-      <div class="r mono ${tn(a.returns[horizon])}">${sp(a.returns[horizon])}</div>
-      <div class="l">через ${horizon} нед.</div></div>`).join("")||`<div class="prose">Ни один аналог ещё не отработал этот горизонт.</div>`}</div>
-  </div>
-  <div class="card"><h3>Сравнение с обычной вероятностью</h3>
-    <div class="sub">Главное в статистике не сам процент, а насколько он отличается от обычного.</div>
-    ${wr!=null&&br!=null?`<div class="bars">
-      <div class="brow"><div class="bl">После похожих ситуаций</div><div class="btr"><div class="bfl" style="width:${wr*100}%;background:var(--vio)"></div></div><div class="bvl mono">${(wr*100).toFixed(0)}%</div></div>
-      <div class="brow"><div class="bl">Обычная вероятность</div><div class="btr"><div class="bfl" style="width:${br*100}%;background:var(--mut)"></div></div><div class="bvl mono">${(br*100).toFixed(0)}%</div></div>
-    </div>`:""}
-    <div class="prose">${md(S.statistics)}</div>
-  </div>`;
+function pHist(m,S,st){
+  if(!m.has_analogs)return `<div class="pn"><div class="pr">Для этого рынка нет ценового ряда, поэтому исторические аналоги не рассчитываются.</div></div>`;
+  const sh=m.analogs.filter(a=>a.returns[hz]!=null).slice(0,10),wr=st.win_rate,br=st.base_rate;
+  return `<div class="pn"><h3>Похожие моменты в прошлом</h3>
+    <div class="ps">${E(st.sample_quality==="Insufficient sample size"?`Похожих ситуаций нашлось всего ${st.n} — этого мало для выводов.`:`Найдено ${st.n??"—"} похожих состояний по позиционированию и динамике. Ниже ближайшие и то, что случилось через ${hz} нед.`)}</div>
+    <div class="acs">${sh.map(a=>`<div class="ac"><div class="d">${E(a.date)}</div><div class="s mn">совпадение ${a.similarity.toFixed(0)}</div>
+      <div class="r mn ${tn(a.returns[hz])}">${sp(a.returns[hz])}</div><div class="l">через ${hz} нед.</div></div>`).join("")||`<div class="pr">Ни один аналог ещё не отработал этот горизонт.</div>`}</div></div>
+  <div class="pn"><h3>Сравнение с обычной вероятностью</h3>
+    <div class="ps">Важен не сам процент, а насколько он отличается от обычного. Если разница меньше 5 п.п. — это шум.</div>
+    ${wr!=null&&br!=null?`<div class="brs">
+      <div class="br"><div class="bl">После похожих ситуаций</div><div class="bt"><div class="bf" style="width:${wr*100}%;background:linear-gradient(90deg,#6B5CE0,#8B7CFF)"></div></div><div class="bv mn">${(wr*100).toFixed(0)}%</div></div>
+      <div class="br"><div class="bl">Обычная вероятность</div><div class="bt"><div class="bf" style="width:${br*100}%;background:#333B4D"></div></div><div class="bv mn">${(br*100).toFixed(0)}%</div></div></div>`:""}
+    <div class="pr">${M(S.statistics)}</div></div>`;
 }
 
-function paneNet(m,S,st,hist){
-  const keys=m.participants.map(p=>p.key);
-  const colors={leveraged_funds:"var(--up)",managed_money:"var(--up)",asset_manager:"var(--gold)",
-    producer_merchant:"var(--gold)",dealer:"var(--down)",swap_dealers:"var(--down)",
-    other_reportables:"var(--vio)",nonreportables:"var(--cy)"};
-  const all=[].concat(...keys.map(k=>hist.map(h=>h[k]).filter(v=>v!=null)));
-  if(!all.length)return `<div class="card"><div class="prose">Нет данных.</div></div>`;
-  const mn=Math.min(...all),mx=Math.max(...all),rg=(mx-mn)||1,W=760,H=330,P=8;
-  const st_=(W-P*2)/Math.max(hist.length-1,1);
-  const paths=keys.map(k=>{let d="";
-    hist.forEach((h,i)=>{const v=h[k]; if(v==null)return;
-      const x=P+i*st_,y=H-P-((v-mn)/rg)*(H-P*2);
-      d+=(d?"L":"M")+x.toFixed(1)+","+y.toFixed(1)+" ";});
-    return d?`<path d="${d}" fill="none" stroke="${colors[k]||"var(--mut)"}" stroke-width="1.6"/>`:"";}).join("");
-  const zeroY=(mn<=0&&mx>=0)?H-P-((0-mn)/rg)*(H-P*2):null;
-  return `<div class="card">
-    <h3>Чистые позиции всех групп</h3>
-    <div class="sub">Кто как стоит и как это менялось. Пересечения и расхождения между группами обычно
-      информативнее, чем каждая линия по отдельности.</div>
-    ${chart((zeroY!=null?`<line x1="${P}" y1="${zeroY.toFixed(1)}" x2="${W-P}" y2="${zeroY.toFixed(1)}" stroke="var(--line2)" stroke-dasharray="3 3"/>`:"")+paths,H)}
-    ${axis(hist)}
-    <div class="legend">${m.participants.map(p=>`<span><i style="background:${colors[p.key]||"var(--mut)"}"></i>${esc(p.label)}</span>`).join("")}</div>
-  </div>`;
+function pNet(m,S,st,h){
+  const ks=m.participants.map(p=>p.key);
+  const C={leveraged_funds:"#26D97F",managed_money:"#26D97F",asset_manager:"#F0B429",producer_merchant:"#F0B429",
+    dealer:"#FF5C55",swap_dealers:"#FF5C55",other_reportables:"#8B7CFF",nonreportables:"#3ECFDA"};
+  const all=[].concat(...ks.map(k=>h.map(x=>x[k]).filter(v=>v!=null)));
+  if(!all.length)return `<div class="pn"><div class="pr">Нет данных.</div></div>`;
+  const s=scale(all,360,12,22);
+  const paths=ks.map(k=>path(h.map(x=>x[k]),s,360,0,C[k]||"#5A6478")).join("");
+  return `<div class="pn"><h3>Чистые позиции всех групп</h3>
+    <div class="ps">Кто как стоит и как это менялось. Расхождения и пересечения между группами обычно информативнее,
+      чем каждая линия по отдельности: когда медленные и быстрые деньги расходятся, направление ещё не решено.</div>
+    ${svg(360,grid(s,360,12,22,"k")+zline(s,360)+paths)}
+    ${dateAxis(h)}
+    <div class="lgn">${m.participants.map(p=>`<span><i style="background:${C[p.key]||"#5A6478"}"></i>${E(p.label)}</span>`).join("")}</div></div>`;
 }
 
-function paneTable(m){
-  const keys=m.participants.map(p=>p.key);
-  return `<div class="card" style="padding-bottom:8px">
-    <h3>Данные по неделям</h3>
-    <div class="sub">Чистая позиция каждой группы и её изменение за неделю. Последние 60 отчётов, свежие сверху.</div>
-  </div>
-  <div class="dtable"><table>
-    <thead><tr><th>Дата</th>${keys.map(k=>`<th colspan="2">${esc(m.participants.find(p=>p.key===k).label)}</th>`).join("")}</tr>
-    <tr><th></th>${keys.map(()=>`<th>нетто</th><th>Δ нед.</th>`).join("")}</tr></thead>
-    <tbody>${m.table.map(r=>`<tr><td class="mono">${esc(r.d)}</td>${keys.map(k=>{
-      const n=r[k+"_net"],c=r[k+"_chg"];
-      return `<td class="mono ${tn(n)}">${sn(n)}</td><td class="mono ${c>0?"gpos":c<0?"gneg":""} ${tn(c)}">${sn(c)}</td>`;}).join("")}</tr>`).join("")}</tbody>
-  </table></div>`;
+function pTbl(m){
+  const ks=m.participants.map(p=>p.key);
+  return `<div class="pn tight"><h3>Данные по неделям</h3>
+    <div class="ps" style="margin:0">Чистая позиция каждой группы и её изменение за неделю. Последние 60 отчётов, свежие сверху.</div></div>
+  <div class="dtb"><table><thead>
+    <tr><th style="text-align:left">Дата</th>${ks.map(k=>`<th colspan="2" style="text-align:center">${E(m.participants.find(p=>p.key===k).label)}</th>`).join("")}</tr>
+    <tr><th></th>${ks.map(()=>`<th>нетто</th><th>Δ нед.</th>`).join("")}</tr></thead>
+    <tbody>${m.table.map(r=>`<tr>${`<td class="mn t3" style="text-align:left">${E(r.d)}</td>`}${ks.map(k=>{const n=r[k+"_net"],c=r[k+"_chg"];
+      return `<td class="mn ${tn(n)}">${sn(n)}</td><td class="mn ${c>0?"gp":c<0?"gn":""} ${tn(c)}">${sn(c)}</td>`;}).join("")}</tr>`).join("")}</tbody></table></div>`;
 }
 
-/* ══ старт ══ */
-$("banner").innerHTML=DATA.synthetic?`<div class="banner">Демо-режим: данные сгенерированы для проверки программы. Это не рынок.</div>`:"";
-$("built").textContent="Обновлено "+DATA.built;
-$("search").oninput=e=>{query=e.target.value.toLowerCase().trim();if(!cur||$("detail").classList.contains("hidden"))renderScreener();};
-sectors(); renderScreener();
+$("ban").innerHTML=DATA.synthetic?`<div class="alert a-red">Демо-режим: данные сгенерированы для проверки программы. Это не рынок.</div>`:"";
+$("bt").textContent="Обновлено "+DATA.built;
+$("q").oninput=e=>{q=e.target.value.toLowerCase().trim();if($("det").classList.contains("hide"))drawScr();};
+drawSec();drawScr();
 </script>
 </body>
 </html>
