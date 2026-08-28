@@ -17,105 +17,20 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
-# Markets
+# Рынки, участники и котировки переехали в config/markets.py.
+# Здесь их намеренно нет: два источника правды для одного и того же — верный
+# способ получить расхождение между тем, что качается, и тем, что считается.
 # ---------------------------------------------------------------------------
 
-CURRENCIES: List[str] = ["EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "NZD", "MXN"]
+from config.markets import (  # noqa: F401 — реэкспорт для обратной совместимости
+    RESOURCE_IDS, all_codes, market,
+)
 
-# Worked examples per spec section 2 ("Основной рабочий пример: GBP/USD и EUR/USD")
-PRIMARY_EXAMPLES: List[str] = ["EUR", "GBP"]
-
-PARTICIPANTS: List[str] = [
-    "dealer",
-    "asset_manager",
-    "leveraged_funds",
-    "other_reportables",
-    "nonreportables",
-]
-
-PARTICIPANT_LABELS: Dict[str, str] = {
-    "dealer": "Dealer/Intermediary",
-    "asset_manager": "Asset Manager/Institutional",
-    "leveraged_funds": "Leveraged Funds",
-    "other_reportables": "Other Reportables",
-    "nonreportables": "Non-Reportables",
-}
-
-# "Non-Reportables" is NOT an independently reported category. Per CFTC's own
-# Explanatory Notes (https://www.cftc.gov/MarketReports/CommitmentsofTraders/ExplanatoryNotes/index.htm,
-# fetched 2026-08-27): "The long and short open interest shown as
-# 'Nonreportable Positions' is derived by subtracting total long and short
-# 'Reportable Positions' from the total open interest." Our loader computes
-# it the same way rather than trusting a vendor's number for it.
-NONREPORTABLES_IS_DERIVED: bool = True
-
-# CFTC "market_and_exchange_names" values for each currency's TFF futures
-# contract, used to filter the raw Socrata rows. These are standard, long
-# stable CFTC contract names, but the loader (src/data/cftc_client.py)
-# VALIDATES each one against the live dataset's distinct values at fetch
-# time and raises a clear, loud error if a name is not found -- it never
-# silently matches zero rows or substitutes a guess (spec section 34/57).
-CFTC_MARKET_NAMES: Dict[str, str] = {
-    "EUR": "EURO FX - CHICAGO MERCANTILE EXCHANGE",
-    "GBP": "BRITISH POUND STERLING - CHICAGO MERCANTILE EXCHANGE",
-    "JPY": "JAPANESE YEN - CHICAGO MERCANTILE EXCHANGE",
-    "AUD": "AUSTRALIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE",
-    "CAD": "CANADIAN DOLLAR - CHICAGO MERCANTILE EXCHANGE",
-    "CHF": "SWISS FRANC - CHICAGO MERCANTILE EXCHANGE",
-    "NZD": "NEW ZEALAND DOLLAR - CHICAGO MERCANTILE EXCHANGE",
-    "MXN": "MEXICAN PESO - CHICAGO MERCANTILE EXCHANGE",
-}
-
-# CFTC Public Reporting Environment (Socrata). Confirmed 2026-08-27 via
-# CFTC's own site (cftc.gov/MarketReports .../ExplanatoryNotes links here)
-# and independent OpenAPI documentation (apis.io) that both cite the same
-# resource id the user supplied (gpe5-46if) under the *non*-"hub" host.
-# NOTE: the user's original brief pointed at
-#   https://publicreportinghub.cftc.gov/Commitments-of-Traders/TFF-Futures-Only/gpe5-46if/explore
-# which is reachable (valid *.cftc.gov TLS cert) and is almost certainly the
-# newer human-browsing UI for the *same* dataset. The programmatic Socrata
-# API documented by CFTC and third parties lives on the host below. The
-# connector accepts either host via CFTC_API_BASE_URL_CANDIDATES and will
-# try them in order -- verify which resolves in YOUR network before relying
-# on it (see DATA_SOURCES.md).
-CFTC_API_BASE_URL_CANDIDATES: List[str] = [
+CFTC_TFF_FUTURES_ONLY_RESOURCE_ID: str = RESOURCE_IDS["tff"]
+CFTC_API_BASE_URL_CANDIDATES: list = [
     "https://publicreporting.cftc.gov/resource",
     "https://publicreportinghub.cftc.gov/resource",
 ]
-CFTC_TFF_FUTURES_ONLY_RESOURCE_ID: str = "gpe5-46if"
-
-
-@dataclass(frozen=True)
-class FxPair:
-    symbol: str
-    currency_is_base: bool  # True: pair-up == currency strengthens. False: pair-up == currency weakens (USD is base).
-    fred_series: Optional[str]  # FRED series id, confirmed 2026-08-27, or None if FRED has no standard series.
-
-
-# Quote convention per spec section 10. Verified against FRED series
-# definitions (fred.stlouisfed.org), fetched 2026-08-27:
-#   DEXUSEU = "U.S. Dollars to One Euro"            -> EURUSD convention (EUR is base)
-#   DEXUSUK = "U.S. Dollars to One British Pound"    -> GBPUSD convention (GBP is base)
-#   DEXUSAL = "U.S. Dollars to One Australian Dollar"-> AUDUSD convention (AUD is base)
-#   DEXJPUS = "Japanese Yen to One U.S. Dollar"      -> USDJPY convention (USD is base)
-#   DEXCAUS = "Canadian Dollars to One U.S. Dollar"  -> USDCAD convention (USD is base)
-#   DEXSZUS = "Switzerland Francs to One U.S. Dollar"-> USDCHF convention (USD is base)
-#   DEXMXUS = "Mexican Pesos to One U.S. Dollar"     -> USDMXN convention (USD is base)
-# FRED has NO standard NZD/USD series (confirmed by its absence from FRED's
-# H.10-derived DEX* series list) -- NZD price must come from price_client's
-# fallback source. We do not invent a FRED code for it.
-FX_PAIRS: Dict[str, FxPair] = {
-    "EUR": FxPair("EURUSD", True, "DEXUSEU"),
-    "GBP": FxPair("GBPUSD", True, "DEXUSUK"),
-    "AUD": FxPair("AUDUSD", True, "DEXUSAL"),
-    "NZD": FxPair("NZDUSD", True, None),
-    "JPY": FxPair("USDJPY", False, "DEXJPUS"),
-    "CAD": FxPair("USDCAD", False, "DEXCAUS"),
-    "CHF": FxPair("USDCHF", False, "DEXSZUS"),
-    "MXN": FxPair("USDMXN", False, "DEXMXUS"),
-}
-
-FRED_CSV_URL_TEMPLATE = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
 
 # ---------------------------------------------------------------------------
 # Statistics windows (weekly frequency -- COT reports are weekly)

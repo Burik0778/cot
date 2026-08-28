@@ -22,12 +22,13 @@ from datetime import date
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import settings
+from config.markets import all_codes, market
 from src.data.db import Database
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--market", required=True, choices=settings.CURRENCIES)
+    parser.add_argument("--market", required=True, choices=all_codes())
     parser.add_argument("--date", required=True, help="report_date, YYYY-MM-DD")
     args = parser.parse_args()
 
@@ -45,23 +46,28 @@ def main():
         print(f"No row for {args.market} on {target}. Nearest available report_date: {nearest}")
         sys.exit(1)
 
-    print(f"=== {args.market} TFF Futures Only -- report_date {target} ===")
-    print(f"CFTC contract name used for this currency: {settings.CFTC_MARKET_NAMES[args.market]}")
+    m_ = market(args.market)
+    report_title = "TFF (Traders in Financial Futures) — Futures Only" if m_.report == "tff" \
+        else "Disaggregated — Futures Only"
+    print(f"=== {args.market} ({m_.name}) · {report_title} · отчёт за {target} ===")
+    m = market(args.market)
+    print(f"Отчёт: {m.report.upper()} · поиск контракта по подстроке: {m.cftc_match!r}")
     print(f"Source: {rows.iloc[0]['source']}")
     print()
-    print("Compare EVERY row below against the official CFTC report at:")
-    print("  https://publicreporting.cftc.gov/  (search: Traders in Financial Futures, Futures Only)")
-    print("or the human-readable historical viewable report at:")
+    dataset = "Traders in Financial Futures — Futures Only" if m_.report == "tff" \
+        else "Disaggregated — Futures Only"
+    print("Сверьте КАЖДУЮ строку ниже с официальным отчётом CFTC:")
+    print(f"  https://publicreporting.cftc.gov/  (набор данных: {dataset})")
+    print("или с историческими отчётами в читаемом виде:")
     print("  https://www.cftc.gov/MarketReports/CommitmentsofTraders/HistoricalViewable/index.htm")
     print()
     for _, r in rows.sort_values("participant").iterrows():
         print(f"  {r['participant']:<20s}  Long={r['long']:>10,d}  Short={r['short']:>10,d}  "
               f"Net={r['long'] - r['short']:>10,d}  OpenInterest={r['open_interest']:>10,d}")
     print()
-    print("If ANY of these numbers differ from the official CFTC report, DO NOT proceed --")
-    print("open a discrepancy note in LIMITATIONS.md describing exactly what differs, and check")
-    print("REQUIRED_COLUMNS / PARTICIPANT_COLUMN_MAP in src/data/cftc_client.py against the live")
-    print("dataset's current column names before assuming the platform's math is at fault.")
+    print("Если ХОТЬ ОДНА цифра расходится с официальным отчётом — не продолжайте.")
+    print("Сначала проверьте PARTICIPANT_COLUMNS в src/data/cftc_client.py против")
+    print("текущих названий колонок в живых данных, и только потом ищите ошибку в расчётах.")
 
 
 if __name__ == "__main__":

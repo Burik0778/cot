@@ -154,7 +154,7 @@ def main():
     # exercising src/reporting/report.py against computed values rather than
     # leaving it as an untested module.
     from src.reporting.report import ReportInput, build_markdown, build_html
-    from config.settings import FX_PAIRS
+    from config.markets import market
 
     eur = results["EUR"]
     states = expand_features_json(db.read_market_states("EUR"))
@@ -167,7 +167,7 @@ def main():
     } for p in settings.PARTICIPANTS]
 
     report_input = ReportInput(
-        market="EUR", pair_symbol=FX_PAIRS["EUR"].symbol,
+        market="EUR", pair_symbol=market("EUR").price_symbol,
         report_date=str(current["report_date"]), availability_date=str(current["availability_date"]),
         availability_source="see cot_raw.availability_source", is_synthetic=True,
         regime=eur["current_regime"],
