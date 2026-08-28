@@ -19,16 +19,17 @@ from datetime import date, timedelta
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import settings
+from config.markets import all_codes
 from src.data.db import Database, now_iso
 from src.pipeline import rebuild_all
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--currencies", nargs="+", default=settings.CURRENCIES)
+    parser.add_argument("--currencies", nargs="+", default=all_codes())
     args = parser.parse_args()
 
-    from src.data.cftc_client import fetch_tff_futures_only, CftcApiError, CftcSchemaError
+    from src.data.cftc_client import fetch_report, CftcApiError, CftcSchemaError
     from src.data.price_client import fetch_price_series, PriceApiError, PriceSourceNotConfigured
 
     db = Database(settings.DB_PATH)
@@ -39,7 +40,7 @@ def main():
         since = (existing["report_date"].max() + timedelta(days=1)) if len(existing) else date(2015, 1, 6)
         print(f"[{currency}] Fetching reports since {since}...")
         try:
-            rows = fetch_tff_futures_only(currency, start_date=since)
+            rows = fetch_report(currency, start_date=since)
             n = db.upsert_cot_raw(rows)
             print(f"  {len(rows)} rows fetched, {n} genuinely new.")
         except (CftcApiError, CftcSchemaError) as e:

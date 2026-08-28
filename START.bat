@@ -18,9 +18,9 @@ if errorlevel 1 (
 if not exist "data\cot_research.db" (
     echo   Zagruzhayu istoriyu CFTC. Eto zaymet 1-2 minuty.
     echo.
-    python scripts\init_db.py --live --currencies EUR GBP JPY AUD CAD CHF MXN
+    python scripts\init_db.py --live
 ) else (
-    python scripts\refresh_data.py --currencies EUR GBP JPY AUD CAD CHF MXN
+    python scripts\refresh_data.py
 )
 
 echo.

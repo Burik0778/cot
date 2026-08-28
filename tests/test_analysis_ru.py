@@ -141,3 +141,48 @@ class TestFullAssembly(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestCommodityHedgerLogic(unittest.TestCase):
+    """Для товаров вторая группа — производители (хеджеры). Их лонг НЕ
+    означает бычий настрой, и трактовка не должна повторять логику TFF."""
+
+    def _gold_ctx(self, spec_oi=0.25, slow_oi=-0.30):
+        return AnalysisContext(
+            currency="GOLD", pair_symbol="XAUUSD", regime="Нейтрально",
+            participants={
+                "managed_money": _p("managed_money", spec_oi, 88.0, 90.0, 4000, up=3),
+                "producer_merchant": _p("producer_merchant", slow_oi, 12.0, 9.0, -3000, down=3),
+            },
+            analogs=[AnalogCase("2020-08-04", 70.0, {8: 0.02})],
+            horizon_stats={8: {"n": 30, "win_rate": 0.6, "base_rate": 0.55, "edge_pp": 5.0,
+                                "median_return": 0.01, "sample_quality": "Moderate"}},
+            spec_key="managed_money", slow_key="producer_merchant",
+            slow_is_hedger=True,
+            spec_label="Управляемые деньги", slow_label="Производители и торговцы",
+        )
+
+    def test_commodity_wording_differs_from_fx(self):
+        name, text = describe_configuration(self._gold_ctx())
+        self.assertIn("хеджируют продажи", name)
+        self.assertIn("производители страхуют", text)
+
+    def test_commodity_never_calls_hedger_long_a_bullish_consensus(self):
+        # хеджеры в лонге + спекулянты в лонге не должны читаться как "консенсус вверх"
+        name, _ = describe_configuration(self._gold_ctx(spec_oi=0.25, slow_oi=0.20))
+        self.assertNotIn("консенсус", name.lower())
+
+    def test_commodity_uses_its_own_participant_labels(self):
+        _, text = describe_configuration(self._gold_ctx())
+        self.assertIn("Управляемые деньги", text)
+        self.assertNotIn("Хедж-фонды", text)
+
+    def test_extremes_use_role_labels_for_commodities(self):
+        lines = describe_extremes(self._gold_ctx())
+        joined = " ".join(lines)
+        self.assertIn("Управляемые деньги", joined)
+
+    def test_confirmation_uses_role_labels(self):
+        confirm, invalidate = describe_confirmation(self._gold_ctx(spec_oi=0.30))
+        joined = " ".join(confirm + invalidate)
+        self.assertNotIn("Хедж-фонды", joined)

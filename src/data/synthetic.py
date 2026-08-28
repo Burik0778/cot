@@ -28,6 +28,7 @@ import pandas as pd
 from datetime import date, timedelta
 
 from config import settings
+from config.markets import all_codes, market, PARTICIPANTS_BY_REPORT
 from src.data.availability import get_availability
 
 SYNTHETIC_SOURCE_TAG = "synthetic_demo"
@@ -36,10 +37,12 @@ SYNTHETIC_SOURCE_TAG = "synthetic_demo"
 # and clearly named so nobody mistakes it for a real market effect.
 ENGINEERED_SIGNAL_COEF = 0.35
 
+_BASE_OI_DEFAULT = 150_000
 _BASE_OI = {
     "EUR": 700_000, "GBP": 220_000, "JPY": 210_000, "AUD": 140_000,
     "CAD": 135_000, "CHF": 55_000, "NZD": 42_000, "MXN": 185_000,
 }
+_BASE_PRICE_DEFAULT = 100.0
 _BASE_PRICE = {
     "EUR": 1.08, "GBP": 1.27, "JPY": 152.0, "AUD": 0.65,
     "CAD": 1.37, "CHF": 0.88, "NZD": 0.59, "MXN": 18.5,
@@ -77,7 +80,7 @@ def generate_currency(currency: str, start: date, end: date, seed: int) -> tuple
     rng = np.random.default_rng(seed)
     dates = _weekly_tuesdays(start, end)
     n = len(dates)
-    base_oi = _BASE_OI[currency]
+    base_oi = _BASE_OI.get(currency, _BASE_OI_DEFAULT)
 
     oi = base_oi * (1 + 0.15 * np.cumsum(rng.normal(0, 0.01, n)))
     oi = np.maximum(oi, base_oi * 0.5)
@@ -101,12 +104,11 @@ def generate_currency(currency: str, start: date, end: date, seed: int) -> tuple
             short_v = int(round((gross - net) / 2))
             return max(long_v, 0), max(short_v, 0)
 
-        participants_ls = {
-            "dealer": long_short(dealer_net_frac[i], 0.35),
-            "asset_manager": long_short(am_net_frac[i], 0.55),
-            "leveraged_funds": long_short(lev_net_frac[i], 0.5),
-            "other_reportables": long_short(other_net_frac[i], 0.15),
-        }
+        parts = PARTICIPANTS_BY_REPORT[market(currency).report]
+        reportable = [p for p in parts if p != "nonreportables"]
+        fracs = [dealer_net_frac[i], am_net_frac[i], lev_net_frac[i], other_net_frac[i]]
+        mults = [0.35, 0.55, 0.5, 0.15]
+        participants_ls = {p: long_short(f, mu) for p, f, mu in zip(reportable, fracs, mults)}
 
         # The COT accounting identity requires that all participant longs sum
         # to open interest, and likewise shorts (non-reportables being the
@@ -149,7 +151,7 @@ def generate_currency(currency: str, start: date, end: date, seed: int) -> tuple
 
     # --- price: engineered positioning-driven signal + noise (see module docstring) ---
     price = np.zeros(n)
-    price[0] = _BASE_PRICE[currency]
+    price[0] = _BASE_PRICE.get(currency, _BASE_PRICE_DEFAULT)
     lev_chg = np.diff(lev_net_frac, prepend=lev_net_frac[0])
     noise_vol = 0.012
     for i in range(1, n):
@@ -165,8 +167,9 @@ def generate_all(start: date | None = None, end: date | None = None, seed: int =
     end = end or date.today()
     all_rows: list[dict] = []
     price_frames: dict[str, pd.DataFrame] = {}
-    for idx, currency in enumerate(settings.CURRENCIES):
-        rows, price_df = generate_currency(currency, start, end, seed=seed + idx)
+    for idx, code in enumerate(all_codes()):
+        rows, price_df = generate_currency(code, start, end, seed=seed + idx)
         all_rows.extend(rows)
-        price_frames[currency] = price_df
+        if market(code).fred_series:      # цена есть не у всех рынков
+            price_frames[code] = price_df
     return all_rows, price_frames

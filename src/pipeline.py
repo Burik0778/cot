@@ -80,11 +80,17 @@ def attach_price_features(wide: pd.DataFrame, price_df: pd.DataFrame) -> pd.Data
     return wide
 
 
-def add_divergence_flags(wide: pd.DataFrame, window_weeks: int = 4) -> pd.DataFrame:
+def add_divergence_flags(wide: pd.DataFrame, spec_col: str = "leveraged_funds_net",
+                          slow_col: str = "asset_manager_net", window_weeks: int = 4) -> pd.DataFrame:
+    """Колонки участников зависят от отчёта (TFF или Disaggregated), поэтому
+    имена передаются, а не зашиты."""
     wide = wide.copy()
-    am_lev = detect_pairwise_divergence(wide, "asset_manager_net", "leveraged_funds_net",
+    if spec_col not in wide.columns or slow_col not in wide.columns:
+        wide["divergence_flags"] = "[]"
+        return wide
+    am_lev = detect_pairwise_divergence(wide, slow_col, spec_col,
                                          "Asset Managers", "Leveraged Funds", window_weeks)
-    lev_price = detect_pairwise_divergence(wide, "leveraged_funds_net", "price_close",
+    lev_price = detect_pairwise_divergence(wide, spec_col, "price_close",
                                             "Leveraged Funds", "Price", window_weeks)
 
     def _flags(i):
@@ -101,16 +107,35 @@ def add_divergence_flags(wide: pd.DataFrame, window_weeks: int = 4) -> pd.DataFr
 
 def build_market_states_for_currency(cot_processed_all: pd.DataFrame, currency: str, price_df: pd.DataFrame | None,
                                       as_of_date: date | None = None) -> pd.DataFrame:
+    from config.markets import spec_key, slow_key
     sub = cot_processed_all[cot_processed_all["market"] == currency]
     wide = pivot_wide(sub)
+    spec_col = f"{spec_key(currency)}_net"
+    slow_col = f"{slow_key(currency)}_net"
     if price_df is not None and len(price_df):
         wide = attach_price_features(wide, price_df)
-        wide = add_divergence_flags(wide)
+        wide = add_divergence_flags(wide, spec_col, slow_col)
         wide = add_forward_returns(wide, price_df, currency, settings.FORWARD_HORIZONS_WEEKS, as_of_date=as_of_date)
     else:
         wide["divergence_flags"] = "[]"
         for h in settings.FORWARD_HORIZONS_WEEKS:
             wide[f"fwd_return_{h}w"] = None
+
+    # Правила режимов написаны в терминах leveraged_funds_*. Для товаров
+    # быстрые деньги называются managed_money — создаём алиасы, чтобы один
+    # набор правил работал для обоих отчётов, не дублируя конфиг.
+    spec = spec_key(currency)
+    if spec != "leveraged_funds":
+        for suffix in ["pct_52w", "chg_4w", "streak_up_weeks", "streak_down_weeks", "net_oi", "net"]:
+            src_col, dst_col = f"{spec}_{suffix}", f"leveraged_funds_{suffix}"
+            if src_col in wide.columns and dst_col not in wide.columns:
+                wide[dst_col] = wide[src_col]
+    slow = slow_key(currency)
+    if slow != "asset_manager":
+        for suffix in ["chg_4w", "net_oi", "pct_52w"]:
+            src_col, dst_col = f"{slow}_{suffix}", f"asset_manager_{suffix}"
+            if src_col in wide.columns and dst_col not in wide.columns:
+                wide[dst_col] = wide[src_col]
 
     wide = classify_dataframe(wide)
     wide["regime_reasons"] = wide["regime_reasons"].apply(json.dumps)

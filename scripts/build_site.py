@@ -1,38 +1,28 @@
 """
 scripts/build_site.py
 
-Собирает готовый сайт: прогоняет квант-движок по всем загруженным
-валютам и запекает результат в один самодостаточный HTML-файл.
+Прогоняет движок по всем загруженным рынкам и запекает результат в один
+самодостаточный HTML-файл: site/index.html.
 
     python scripts/build_site.py
-
-На выходе: site/index.html — открывается двойным кликом, без сервера,
-без интернета, без Python. Внутри уже посчитанные цифры; браузер только
-рисует.
 """
 from __future__ import annotations
-import sys
-import json
+import sys, json
 from pathlib import Path
 from datetime import date
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import settings
+from config.markets import (
+    market, all_codes, spec_key, slow_key, other_side_key, slow_is_contrarian,
+    PARTICIPANTS_BY_REPORT, PARTICIPANT_RU, PARTICIPANT_ROLE_RU, SECTORS_RU,
+)
 from src.data.db import Database
 from src.pipeline import expand_features_json
 from src.analogs.similarity import fit, find_analogs
 from src.analogs.baserate import compare_to_base_rate
-from src.ai.analysis_ru import (
-    AnalysisContext, ParticipantSnapshot, AnalogCase, build_full_analysis,
-)
-
-CURRENCY_NAMES = {
-    "EUR": "Евро", "GBP": "Фунт стерлингов", "JPY": "Японская иена",
-    "AUD": "Австралийский доллар", "CAD": "Канадский доллар",
-    "CHF": "Швейцарский франк", "NZD": "Новозеландский доллар",
-    "MXN": "Мексиканское песо",
-}
+from src.ai.analysis_ru import AnalysisContext, ParticipantSnapshot, AnalogCase, build_full_analysis
 
 REGIME_RU = {
     "Bullish Reversal": "Разворот вверх", "Bearish Reversal": "Разворот вниз",
@@ -43,30 +33,17 @@ REGIME_RU = {
     "Neutral": "Нейтрально", "Unclassified": "Не определено",
 }
 
-PARTICIPANTS_SHOWN = [
-    ("leveraged_funds", "Хедж-фонды", "быстрые спекулятивные деньги"),
-    ("asset_manager", "Управляющие активами", "медленный инерционный капитал"),
-    ("dealer", "Дилеры", "маркет-мейкеры, обычно на другой стороне"),
-]
-
 HORIZONS = [4, 8, 12]
 
 
-def _snap(row, key) -> ParticipantSnapshot:
-    return ParticipantSnapshot(
-        key=key, net=row.get(f"{key}_net"), net_oi=row.get(f"{key}_net_oi"),
-        pct_52w=row.get(f"{key}_pct_52w"), pct_156w=row.get(f"{key}_pct_156w"),
-        chg_4w=row.get(f"{key}_chg_4w"),
-        streak_up=row.get(f"{key}_streak_up_weeks"),
-        streak_down=row.get(f"{key}_streak_down_weeks"),
-    )
-
-
-def _clean(v):
-    """NaN -> None, numpy -> python. JSON не умеет NaN, а 'nan%' в интерфейсе
-    уже однажды всплывало (см. LIMITATIONS)."""
+def clean(v):
+    """numpy-типы (bool_, int64, float64) не сериализуются в JSON напрямую —
+    приводим к чистому Python. NaN превращаем в None: 'nan%' в интерфейсе
+    уже однажды всплывало."""
     if v is None:
         return None
+    if isinstance(v, (bool,)) or type(v).__name__ in ("bool_", "bool8"):
+        return bool(v)
     try:
         f = float(v)
         return None if f != f else f
@@ -74,94 +51,133 @@ def _clean(v):
         return str(v)
 
 
-def analyze_currency(states, currency: str) -> dict | None:
+def signal_badge(pct52, streak_up, streak_down, chg4):
+    """Короткий бейдж состояния для скринера — по тем же порогам, что и режимы."""
+    p = pct52 if pct52 is not None else 50
+    up = streak_up or 0
+    down = streak_down or 0
+    if p <= 5 or p >= 95:
+        return ("Экстремум", "extreme")
+    if p <= 10 and up >= 2 and (chg4 or 0) > 0:
+        return ("Разворот?", "reversal")
+    if p >= 90 and down >= 2 and (chg4 or 0) < 0:
+        return ("Разворот?", "reversal")
+    if p <= 20 or p >= 80:
+        return ("Переполнено", "crowded")
+    if up >= 4:
+        return ("Накопление", "accum")
+    if down >= 4:
+        return ("Распределение", "distrib")
+    return ("—", "none")
+
+
+def snap(row, key):
+    return ParticipantSnapshot(
+        key=key, net=clean(row.get(f"{key}_net")), net_oi=clean(row.get(f"{key}_net_oi")),
+        pct_52w=clean(row.get(f"{key}_pct_52w")), pct_156w=clean(row.get(f"{key}_pct_156w")),
+        chg_4w=clean(row.get(f"{key}_chg_4w")),
+        streak_up=clean(row.get(f"{key}_streak_up_weeks")),
+        streak_down=clean(row.get(f"{key}_streak_down_weeks")),
+    )
+
+
+def analyze(states, code):
+    m = market(code)
+    sk, lk, ok = spec_key(code), slow_key(code), other_side_key(code)
+    participants = PARTICIPANTS_BY_REPORT[m.report]
+
     feats = [f for f in settings.DEFAULT_ANALOG_FEATURES if f in states.columns]
-    usable = states.dropna(subset=feats).reset_index(drop=True)
-    if len(usable) < 30:
-        return None
+    usable = states.dropna(subset=feats).reset_index(drop=True) if feats else states
+    # bool(...) обязателен: выражение с pandas/numpy возвращает np.bool_,
+    # который не сериализуется в JSON.
+    has_analogs = bool(len(usable) >= 30 and "fwd_return_8w" in usable.columns
+                       and usable["fwd_return_8w"].notna().sum() >= 20)
 
-    current = usable.iloc[-1]
-    pool = usable.iloc[:-1]
-    fitted = fit(pool, settings.DEFAULT_ANALOG_FEATURES)
-    found = find_analogs(fitted, current, as_of_date=current["availability_date"],
-                          max_analogs=settings.DEFAULT_MAX_ANALOGS)
-    analog_rows = usable.loc[[a.index for a in found]]
+    current = states.iloc[-1]
+    analog_cases, horizon_stats, analog_pcts = [], {}, []
 
-    horizon_stats = {}
-    for h in HORIZONS:
-        col = f"fwd_return_{h}w"
-        if col not in usable.columns:
-            continue
-        cmp = compare_to_base_rate(analog_rows[col], usable, h, col)
-        horizon_stats[h] = {
-            "n": cmp.analog_rate.n, "win_rate": _clean(cmp.analog_rate.win_rate),
-            "median_return": _clean(cmp.analog_rate.median_return),
-            "base_rate": _clean(cmp.base_rate.win_rate),
-            "edge_pp": _clean(cmp.win_rate_diff_pp),
-            "sample_quality": cmp.analog_rate.sample_quality,
-        }
-
-    analog_cases = [
-        AnalogCase(date=str(usable.loc[a.index]["report_date"]), similarity=a.similarity_score,
-                   forward_returns={h: usable.loc[a.index].get(f"fwd_return_{h}w") for h in HORIZONS})
-        for a in found[:14]
-    ]
+    if has_analogs:
+        cur = usable.iloc[-1]
+        fitted = fit(usable.iloc[:-1], settings.DEFAULT_ANALOG_FEATURES)
+        found = find_analogs(fitted, cur, as_of_date=cur["availability_date"],
+                              max_analogs=settings.DEFAULT_MAX_ANALOGS)
+        rows = usable.loc[[a.index for a in found]]
+        analog_pcts = [clean(usable.loc[a.index].get(f"{sk}_pct_52w")) for a in found]
+        for h in HORIZONS:
+            col = f"fwd_return_{h}w"
+            if col in usable.columns:
+                c = compare_to_base_rate(rows[col], usable, h, col)
+                horizon_stats[h] = {
+                    "n": c.analog_rate.n, "win_rate": clean(c.analog_rate.win_rate),
+                    "median_return": clean(c.analog_rate.median_return),
+                    "base_rate": clean(c.base_rate.win_rate), "edge_pp": clean(c.win_rate_diff_pp),
+                    "sample_quality": c.analog_rate.sample_quality,
+                }
+        analog_cases = [
+            AnalogCase(date=str(usable.loc[a.index]["report_date"]), similarity=a.similarity_score,
+                       forward_returns={h: clean(usable.loc[a.index].get(f"fwd_return_{h}w")) for h in HORIZONS})
+            for a in found[:14]
+        ]
 
     ctx = AnalysisContext(
-        currency=currency, pair_symbol=settings.FX_PAIRS[currency].symbol,
-        regime=REGIME_RU.get(current["regime"], current["regime"]),
-        participants={k: _snap(current, k) for k, _, _ in PARTICIPANTS_SHOWN},
+        currency=code, pair_symbol=m.price_symbol or code,
+        regime=REGIME_RU.get(current.get("regime"), current.get("regime")),
+        participants={k: snap(current, k) for k in participants},
         analogs=analog_cases, horizon_stats=horizon_stats,
-        price_chg_4w=_clean(current.get("price_chg_4w")),
-        price_chg_8w=_clean(current.get("price_chg_8w")),
+        spec_key=sk, slow_key=lk, slow_is_hedger=slow_is_contrarian(code),
+        spec_label=PARTICIPANT_RU[sk], slow_label=PARTICIPANT_RU[lk],
+        price_chg_4w=clean(current.get("price_chg_4w")),
+        price_chg_8w=clean(current.get("price_chg_8w")),
         divergences=json.loads(current["divergence_flags"]) if isinstance(current.get("divergence_flags"), str) else [],
     )
 
-    sections_by_horizon = {h: build_full_analysis(ctx, h) for h in HORIZONS}
-    history = usable.tail(156)
+    sections = {str(h): build_full_analysis(ctx, h) for h in HORIZONS}
+    spec = ctx.participants[sk]
+    badge, badge_kind = signal_badge(spec.pct_52w, spec.streak_up, spec.streak_down, spec.chg_4w)
+    hist = states.tail(261)
 
     return {
-        "code": currency,
-        "name": CURRENCY_NAMES.get(currency, currency),
-        "pair": ctx.pair_symbol,
-        "report_date": str(current["report_date"]),
-        "published": str(current["availability_date"]),
-        "regime": ctx.regime,
-        "price": _clean(current.get("price_close")),
-        "price_chg_4w": _clean(current.get("price_chg_4w")),
-        "price_chg_8w": _clean(current.get("price_chg_8w")),
+        "code": code, "name": m.name, "sector": m.sector, "sector_ru": SECTORS_RU[m.sector],
+        "report": m.report, "symbol": m.price_symbol or code,
+        "report_date": str(current["report_date"]), "published": str(current["availability_date"]),
+        "regime": ctx.regime, "badge": badge, "badge_kind": badge_kind,
+        "has_price": bool(m.fred_series), "has_analogs": has_analogs,
+        "spec_key": sk, "slow_key": lk, "other_key": ok,
+        "price": clean(current.get("price_close")),
+        "price_chg_4w": clean(current.get("price_chg_4w")),
+        "price_chg_8w": clean(current.get("price_chg_8w")),
+        "open_interest": clean(current.get(f"{sk}_open_interest")) or clean(current.get("open_interest")),
         "participants": [
-            {"key": k, "label": label, "role": role,
-             "net": _clean(current.get(f"{k}_net")),
-             "net_oi": _clean(current.get(f"{k}_net_oi")),
-             "pct_52w": _clean(current.get(f"{k}_pct_52w")),
-             "pct_156w": _clean(current.get(f"{k}_pct_156w")),
-             "chg_4w": _clean(current.get(f"{k}_chg_4w"))}
-            for k, label, role in PARTICIPANTS_SHOWN
+            {"key": k, "label": PARTICIPANT_RU[k], "role": PARTICIPANT_ROLE_RU[k],
+             "net": clean(current.get(f"{k}_net")), "net_oi": clean(current.get(f"{k}_net_oi")),
+             "long": clean(current.get(f"{k}_long")), "short": clean(current.get(f"{k}_short")),
+             "pct_52w": clean(current.get(f"{k}_pct_52w")), "pct_156w": clean(current.get(f"{k}_pct_156w")),
+             "z_52w": clean(current.get(f"{k}_z_52w")),
+             "chg_1w": clean(current.get(f"{k}_chg_1w")), "chg_4w": clean(current.get(f"{k}_chg_4w")),
+             "chg_13w": clean(current.get(f"{k}_chg_13w")),
+             "is_spec": k == sk, "is_slow": k == lk}
+            for k in participants
         ],
-        "analog_percentiles": [_clean(usable.loc[a.index].get("leveraged_funds_pct_52w")) for a in found],
-        "analogs": [
-            {"date": a.date, "similarity": round(a.similarity, 1),
-             "returns": {str(h): _clean(v) for h, v in a.forward_returns.items()}}
-            for a in analog_cases
-        ],
+        "analog_percentiles": analog_pcts,
+        "analogs": [{"date": a.date, "similarity": round(a.similarity, 1),
+                      "returns": {str(h): clean(v) for h, v in a.forward_returns.items()}}
+                     for a in analog_cases],
         "horizon_stats": {str(h): s for h, s in horizon_stats.items()},
-        "sections": {
-            str(h): {
-                "configuration_name": s["configuration_name"],
-                "configuration_text": s["configuration_text"],
-                "extremes": s["extremes"], "analogs": s["analogs"],
-                "statistics": s["statistics"], "confirm": s["confirm"],
-                "invalidate": s["invalidate"], "caveats": s["caveats"],
-            } for h, s in sections_by_horizon.items()
-        },
+        "sections": sections,
         "history": [
+            {"d": str(r["report_date"]), "p": clean(r.get("price_close")),
+             "oi": clean(r.get(f"{sk}_open_interest")),
+             **{k: clean(r.get(f"{k}_net")) for k in participants},
+             "spec_oi": clean(r.get(f"{sk}_net_oi")), "pct": clean(r.get(f"{sk}_pct_52w")),
+             "z": clean(r.get(f"{sk}_z_52w"))}
+            for _, r in hist.iterrows()
+        ],
+        "table": [
             {"d": str(r["report_date"]),
-             "p": _clean(r.get("price_close")),
-             "lf": _clean(r.get("leveraged_funds_net_oi")),
-             "am": _clean(r.get("asset_manager_net_oi")),
-             "pct": _clean(r.get("leveraged_funds_pct_52w"))}
-            for _, r in history.iterrows()
+             **{f"{k}_net": clean(r.get(f"{k}_net")) for k in participants},
+             **{f"{k}_chg": clean(r.get(f"{k}_chg_1w")) for k in participants},
+             **{f"{k}_oi": clean(r.get(f"{k}_net_oi")) for k in participants}}
+            for _, r in states.tail(60).iloc[::-1].iterrows()
         ],
     }
 
@@ -170,37 +186,35 @@ def main():
     db = Database(settings.DB_PATH)
     raw = db.read_cot_raw()
     if raw.empty:
-        print("В базе нет данных. Сначала запустите START.bat или scripts/init_db.py.")
-        sys.exit(1)
+        print("В базе нет данных. Сначала загрузите их."); sys.exit(1)
 
-    is_synth = "synthetic_demo" in set(raw["source"].unique())
-    available = [c for c in settings.CURRENCIES if c in set(raw["market"].unique())]
+    synth = any(s.startswith("synthetic") for s in raw["source"].unique())
+    loaded = set(raw["market"].unique())
+    payload = {"built": date.today().isoformat(), "synthetic": synth,
+               "sectors": SECTORS_RU, "markets": []}
 
-    payload = {"built": date.today().isoformat(), "synthetic": is_synth, "currencies": []}
-    for c in available:
-        states = expand_features_json(db.read_market_states(c))
+    for code in all_codes():
+        if code not in loaded:
+            continue
+        states = expand_features_json(db.read_market_states(code))
         if states.empty:
             continue
         states = states.sort_values("report_date").reset_index(drop=True)
-        rec = analyze_currency(states, c)
-        if rec:
-            payload["currencies"].append(rec)
-            print(f"  {c}: готово ({len(rec['analogs'])} аналогов, {len(rec['history'])} недель истории)")
-        else:
-            print(f"  {c}: пропущено — мало истории")
+        try:
+            payload["markets"].append(analyze(states, code))
+            print(f"  {code}: готово")
+        except Exception as e:  # noqa: BLE001 — один рынок не должен ронять всю сборку
+            print(f"  {code}: ПРОПУЩЕН — {type(e).__name__}: {e}")
 
-    if not payload["currencies"]:
-        print("Ни одной валюты с достаточной историей.")
-        sys.exit(1)
+    if not payload["markets"]:
+        print("Ни одного рынка не собралось."); sys.exit(1)
 
     root = Path(__file__).resolve().parents[1]
-    template = (root / "site_template" / "index.template.html").read_text(encoding="utf-8")
-    out = template.replace("/*__DATA__*/null", json.dumps(payload, ensure_ascii=False))
+    tpl = (root / "site_template" / "index.template.html").read_text(encoding="utf-8")
+    out = tpl.replace("/*__DATA__*/null", json.dumps(payload, ensure_ascii=False))
     (root / "site").mkdir(exist_ok=True)
-    out_path = root / "site" / "index.html"
-    out_path.write_text(out, encoding="utf-8")
-    print(f"\nСайт собран: {out_path}")
-    print("Откройте этот файл двойным кликом.")
+    (root / "site" / "index.html").write_text(out, encoding="utf-8")
+    print(f"\nСайт собран: {root / 'site' / 'index.html'}  ({len(payload['markets'])} рынков)")
 
 
 if __name__ == "__main__":

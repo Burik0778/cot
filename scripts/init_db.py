@@ -25,6 +25,7 @@ from datetime import date
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from config import settings
+from config.markets import all_codes
 from src.data.db import Database, now_iso
 from src.data.synthetic import generate_all
 from src.pipeline import rebuild_all
@@ -50,7 +51,7 @@ def init_synthetic(db: Database, start: date, end: date):
 
 
 def init_live(db: Database, currencies: list[str], start: date, end: date | None):
-    from src.data.cftc_client import fetch_tff_futures_only, CftcApiError, CftcSchemaError
+    from src.data.cftc_client import fetch_report, CftcApiError, CftcSchemaError
     from src.data.price_client import fetch_price_series, PriceApiError, PriceSourceNotConfigured
 
     price_frames = {}
@@ -58,7 +59,7 @@ def init_live(db: Database, currencies: list[str], start: date, end: date | None
     for currency in currencies:
         print(f"[{currency}] Fetching CFTC TFF Futures Only...")
         try:
-            rows = fetch_tff_futures_only(currency, start_date=start, end_date=end)
+            rows = fetch_report(currency, start_date=start, end_date=end)
             n = db.upsert_cot_raw(rows)
             print(f"  {len(rows)} rows fetched, {n} new rows inserted.")
             any_cot_success = True
@@ -92,7 +93,7 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--synthetic", action="store_true")
     group.add_argument("--live", action="store_true")
-    parser.add_argument("--currencies", nargs="+", default=settings.CURRENCIES)
+    parser.add_argument("--currencies", nargs="+", default=all_codes())
     parser.add_argument("--start", type=str, default="2015-01-06")
     parser.add_argument("--end", type=str, default=None)
     args = parser.parse_args()
