@@ -88,8 +88,9 @@ class Market:
     report: str                     # TFF или DISAGGREGATED
     cftc_match: str                 # подстрока для поиска контракта в данных CFTC
     price_symbol: Optional[str] = None      # как называем ценовой ряд
-    fred_series: Optional[str] = None       # серия FRED, если есть
+    fred_series: Optional[str] = None       # серии FRED через '|', пробуются по очереди
     price_is_inverse: bool = False  # True: рост пары = ослабление инструмента (USD в базе)
+    stooq_symbol: Optional[str] = None      # запасной источник: символы Stooq через '|' 
     aliases: tuple = field(default_factory=tuple)
 
 
@@ -109,15 +110,15 @@ MARKETS: list[Market] = [
     Market("AUD", "Австралийский доллар", "FX", TFF, "AUSTRALIAN DOLLAR", "AUDUSD", "DEXUSAL"),
     Market("CAD", "Канадский доллар", "FX", TFF, "CANADIAN DOLLAR", "USDCAD", "DEXCAUS", True),
     Market("CHF", "Швейцарский франк", "FX", TFF, "SWISS FRANC", "USDCHF", "DEXSZUS", True),
-    Market("NZD", "Новозеландский доллар", "FX", TFF, "NEW ZEALAND DOLLAR", "NZDUSD", None),
+    Market("NZD", "Новозеландский доллар", "FX", TFF, "NEW ZEALAND DOLLAR", "NZDUSD", None, stooq_symbol="nzdusd"),
     Market("MXN", "Мексиканское песо", "FX", TFF, "MEXICAN PESO", "USDMXN", "DEXMXUS", True),
-    Market("DXY", "Индекс доллара", "FX", TFF, "USD INDEX|U.S. DOLLAR INDEX|DOLLAR INDEX", "DXY", None),
+    Market("DXY", "Индекс доллара", "FX", TFF, "USD INDEX|U.S. DOLLAR INDEX|DOLLAR INDEX", "DXY", None, stooq_symbol="dx.f|usdidx"),
 
     # ─── Индексы (TFF) ───────────────────────────────────────────────────
     Market("SP500", "S&P 500", "INDICES", TFF, "E-MINI S&P 500|E-MINI S&P500|S&P 500 Consolidated|S&P 500", "SPX", "SP500"),
     Market("NASDAQ", "Nasdaq 100", "INDICES", TFF, "NASDAQ-100 Consolidated|NASDAQ-100 STOCK INDEX|E-MINI NASDAQ|NASDAQ", "NDX", "NASDAQ100"),
     Market("DOW", "Dow Jones", "INDICES", TFF, "DJIA Consolidated|DOW JONES|DJIA", "DJI", "DJIA"),
-    Market("RUSSELL", "Russell 2000", "INDICES", TFF, "RUSSELL E-MINI|E-MINI RUSSELL 2000|RUSSELL 2000", "RUT", None),
+    Market("RUSSELL", "Russell 2000", "INDICES", TFF, "RUSSELL E-MINI|E-MINI RUSSELL 2000|RUSSELL 2000", "RUT", None, stooq_symbol="^rut"),
     Market("VIX", "Индекс волатильности VIX", "INDICES", TFF, "VIX FUTURES|CBOE VOLATILITY|VOLATILITY INDEX", "VIX", "VIXCLS"),
 
     # ─── Крипта (TFF) ────────────────────────────────────────────────────
@@ -125,14 +126,14 @@ MARKETS: list[Market] = [
     Market("ETH", "Эфир", "CRYPTO", TFF, "ETHER CASH SETTLED|ETHER", "ETHUSD", "CBETHUSD"),
 
     # ─── Металлы (DISAGGREGATED) ─────────────────────────────────────────
-    Market("GOLD", "Золото", "METALS", DISAGGREGATED, "GOLD - COMMODITY EXCHANGE|GOLD", "XAUUSD", None),
-    Market("SILVER", "Серебро", "METALS", DISAGGREGATED, "SILVER - COMMODITY EXCHANGE|SILVER", "XAGUSD", None),
-    Market("COPPER", "Медь", "METALS", DISAGGREGATED, "COPPER- #1|COPPER", "COPPER", None),
-    Market("PLATINUM", "Платина", "METALS", DISAGGREGATED, "PLATINUM", "XPTUSD", None),
+    Market("GOLD", "Золото", "METALS", DISAGGREGATED, "GOLD - COMMODITY EXCHANGE|GOLD", "XAUUSD", None, stooq_symbol="xauusd"),
+    Market("SILVER", "Серебро", "METALS", DISAGGREGATED, "SILVER - COMMODITY EXCHANGE|SILVER", "XAGUSD", None, stooq_symbol="xagusd"),
+    Market("COPPER", "Медь", "METALS", DISAGGREGATED, "COPPER- #1|COPPER", "COPPER", None, stooq_symbol="hg.f"),
+    Market("PLATINUM", "Платина", "METALS", DISAGGREGATED, "PLATINUM", "XPTUSD", None, stooq_symbol="xptusd"),
 
     # ─── Ставки (TFF) ────────────────────────────────────────────────────
-    Market("UST10Y", "Гособлигации США 10 лет", "RATES", TFF, "UST 10Y NOTE|10-YEAR U.S. TREASURY|10 YEAR NOTE", "US10Y", None),
-    Market("UST2Y", "Гособлигации США 2 года", "RATES", TFF, "UST 2Y NOTE|2-YEAR U.S. TREASURY|2 YEAR NOTE", "US2Y", None),
+    Market("UST10Y", "Гособлигации США 10 лет", "RATES", TFF, "UST 10Y NOTE|10-YEAR U.S. TREASURY|10 YEAR NOTE", "US10Y", "DGS10"),
+    Market("UST2Y", "Гособлигации США 2 года", "RATES", TFF, "UST 2Y NOTE|2-YEAR U.S. TREASURY|2 YEAR NOTE", "US2Y", "DGS2"),
 ]
 
 BY_CODE = {m.code: m for m in MARKETS}

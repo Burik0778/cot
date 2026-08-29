@@ -24,6 +24,7 @@ from src.analogs.similarity import fit, find_analogs
 from src.analogs.baserate import compare_to_base_rate
 from src.ai.analysis_ru import AnalysisContext, ParticipantSnapshot, AnalogCase, build_full_analysis
 from src.ai.briefing_ru import Flow, BriefingInput, build_facts
+from src.events.validation import validate_all
 
 REGIME_RU = {
     "Bullish Reversal": "Разворот вверх", "Bearish Reversal": "Разворот вниз",
@@ -268,6 +269,7 @@ def analyze(states, code):
         "horizon_stats": {str(h): s for h, s in horizon_stats.items()},
         "sections": sections,
         "facts": facts,
+        "validation": validate_all(states, sk, lk) if m.fred_series or m.stooq_symbol else [],
         "history": [
             {"d": str(r["report_date"]), "p": clean(r.get("price_close")),
              "oi": clean(r.get(f"{sk}_open_interest")),

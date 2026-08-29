@@ -251,6 +251,7 @@ footer{border-top:1px solid var(--ln);margin-top:44px;padding:24px 0 56px;color:
 
 <script>
 const DATA=/*__DATA__*/null;
+const MIN_N=20;
 let sec="ALL",q="",sk="pct",sd=-1,cur=null,tab="dash",hz="8",per=104;
 
 const $=i=>document.getElementById(i);
@@ -432,7 +433,7 @@ function drawScr(){
 /* ─── деталь ─── */
 function open(code){cur=DATA.markets.find(m=>m.code===code);tab="dash";
   $("scr").classList.add("hide");$("det").classList.remove("hide");draw();window.scrollTo({top:0,behavior:"smooth"});}
-const TABS=[["dash","Обзор"],["strips","Диапазоны"],["hist","История"],["net","Чистые позиции"],["tbl","Таблица"]];
+const TABS=[["dash","Обзор"],["strips","Диапазоны"],["hist","История"],["check","Проверка"],["net","Чистые позиции"],["tbl","Таблица"]];
 
 function draw(){
   const m=cur,S=m.sections[hz],st=m.horizon_stats[hz]||{},s=SPEC(m),h=m.history.slice(-per);
@@ -455,10 +456,11 @@ function draw(){
   $("det").querySelectorAll(".tb").forEach(b=>b.onclick=()=>{tab=b.dataset.t;draw();});
   $("det").querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{hz=b.dataset.h;draw();});
   $("det").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{per=+b.dataset.p;draw();});
-  $("pn").innerHTML=({dash:pDash,strips:pStrips,hist:pHist,net:pNet,tbl:pTbl})[tab](m,S,st,h);
+  $("pn").innerHTML=({dash:pDash,strips:pStrips,hist:pHist,check:pCheck,net:pNet,tbl:pTbl})[tab](m,S,st,h);
   bindHover($("pn"),h);
   $("pn").querySelectorAll(".exp").forEach(b=>b.onclick=e=>{e.stopPropagation();openModal(b.dataset.x);});
   if(tab==="hist")bindAnalogs(m);
+  if(tab==="check")bindCheck();
 }
 
 
@@ -643,6 +645,63 @@ function bindAnalogs(m){
     selAnalog=(selAnalog===c.dataset.a)?null:c.dataset.a;
     draw();
   });
+}
+
+let vCond=null,vEv=null;
+
+function pCheck(m){
+  const V=m.validation||[];
+  if(!V.length)return `<div class="pn"><div class="pr">Для этого рынка нет ценового ряда — проверить движения не с чем.</div></div>`;
+  const conds=[...new Map(V.map(x=>[x.cond_key,x])).values()];
+  const evs=[...new Map(V.map(x=>[x.ev_key,x])).values()];
+  vCond=vCond||conds[0].cond_key; vEv=vEv||evs[0].ev_key;
+  const r=V.find(x=>x.cond_key===vCond&&x.ev_key===vEv)||V[0];
+  const p=x=>x==null?"—":(x*100).toFixed(0)+"%";
+  return `<div class="pn">
+    <h3>Проверка на истории</h3>
+    <div class="ps">Вопрос: были ли подсказки в отчётах перед крупными движениями? Ответ даёт не подборка
+      удачных примеров, а таблица из четырёх клеток. Клетка «условие было, движения не было» — самая важная:
+      если она большая, признак не предупреждает ни о чём, сколько бы красивых случаев ни нашлось.</div>
+    <div class="ctl" style="margin-bottom:18px">
+      <span class="cl">Признак в отчёте</span>
+      <select id="vc">${conds.map(c=>`<option value="${c.cond_key}"${c.cond_key===vCond?" selected":""}>${E(c.cond)}</option>`).join("")}</select>
+      <span class="cl">Движение</span>
+      <select id="ve">${evs.map(e=>`<option value="${e.ev_key}"${e.ev_key===vEv?" selected":""}>${E(e.ev)}</option>`).join("")}</select>
+    </div>
+    <div class="ps" style="margin-bottom:16px"><b style="color:var(--tx)">${E(r.cond)}</b> — ${E(r.cond_desc)}<br>
+      <b style="color:var(--tx)">${E(r.ev)}</b> — ${E(r.ev_desc)}</div>
+    <table class="cmp" style="max-width:640px">
+      <thead><tr><th></th><th>движение было</th><th>движения не было</th><th>доля</th></tr></thead>
+      <tbody>
+        <tr><td><b style="color:var(--tx)">признак был</b></td>
+          <td class="mn up" style="font-size:16px">${r.a}</td>
+          <td class="mn dn" style="font-size:16px">${r.b}</td>
+          <td class="mn"><b>${p(r.rate_with)}</b></td></tr>
+        <tr><td>признака не было</td><td class="mn">${r.c}</td><td class="mn">${r.d}</td>
+          <td class="mn">${p(r.rate_without)}</td></tr>
+      </tbody></table>
+    <div class="brs" style="margin-top:20px">
+      <div class="br"><div class="bl">Когда признак был</div><div class="bt"><div class="bf" style="width:${(r.rate_with||0)*100}%;background:linear-gradient(90deg,#6B5CE0,#8B7CFF)"></div></div><div class="bv mn">${p(r.rate_with)}</div></div>
+      <div class="br"><div class="bl">Вообще всегда (база)</div><div class="bt"><div class="bf" style="width:${(r.base_rate||0)*100}%;background:#333B4D"></div></div><div class="bv mn">${p(r.base_rate)}</div></div>
+    </div>
+    <div class="pr" style="margin-top:6px">${E(r.verdict)}</div>
+    ${r.dates.length?`<details style="margin-top:16px"><summary>Даты, когда признак выполнялся (${r.dates.length} последних)</summary>
+      <div class="mn t3" style="margin-top:12px;font-size:11.5px;line-height:2">${r.dates.map(d=>E(d)).join(" · ")}</div></details>`:""}
+  </div>
+  <div class="pn"><h3>Как это читать</h3>
+    <ul class="ul">
+      <li>Признаки и движения заданы формулой заранее — их нельзя подогнать под удачные случаи задним числом.</li>
+      <li>Условие проверяется на данных, доступных на дату отчёта; движение ищется строго после неё.</li>
+      <li>Наблюдения, у которых горизонт ещё не прошёл, в счёт не идут — иначе они считались бы за «движения не было».</li>
+      <li>Меньше ${MIN_N} случаев — вывод не делается вообще.</li>
+      <li>Недельные наблюдения перекрываются, поэтому независимых случаев меньше, чем показывает N. Разницу до 5 п.п. считайте шумом.</li>
+    </ul></div>`;
+}
+
+function bindCheck(){
+  const c=$("vc"),e=$("ve");
+  if(c)c.onchange=()=>{vCond=c.value;draw();};
+  if(e)e.onchange=()=>{vEv=e.value;draw();};
 }
 
 function pNet(m,S,st,h){
