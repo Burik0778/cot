@@ -1,0 +1,283 @@
+// © Индикатор позиционирования COT
+// Pine Script v6
+//
+// ЧТО ЭТО
+// Показывает на графике чистые позиции участников из отчётов CFTC, их
+// положение внутри исторического диапазона и отмечает состояния, которые
+// стоит замечать: экстремумы, разворот с экстремума, расхождение групп,
+// рост нетто за счёт закрытия шортов.
+//
+// ─────────────────────────────────────────────────────────────────────
+// ГЛАВНОЕ, ЧТО НАДО ПОНЯТЬ ПРО ЛАГ ПУБЛИКАЦИИ
+// ─────────────────────────────────────────────────────────────────────
+// CFTC замеряет позиции во ВТОРНИК, а публикует их в ПЯТНИЦУ в 15:30
+// по Нью-Йорку. TradingView проставляет данные датой замера, то есть
+// вторником.
+//
+// Если оставить как есть, индикатор рисует на вторничной свече цифры,
+// которые станут известны только через три дня. На истории это выглядит
+// прекрасно и совершенно бесполезно вживую: вы бы физически не могли
+// принять по ним решение в тот день.
+//
+// Поэтому по умолчанию включён сдвиг publicationShiftBars. Он двигает
+// данные вперёд, к моменту, когда они стали публичными. Выключайте его
+// только осознанно — например, чтобы посмотреть на «сырую» картину.
+//
+// Проверить это легко: включите и выключите сдвиг на историческом
+// развороте. Если сигнал хорош только без сдвига — сигнала нет.
+// ─────────────────────────────────────────────────────────────────────
+//
+// ЧЕГО ЭТОТ ИНДИКАТОР НЕ ДЕЛАЕТ
+// Он не проверяет, работают ли отмеченные условия. Метка на графике —
+// это «здесь выполнилось условие», а не «здесь надо покупать». Вопрос
+// «сколько раз условие выполнялось и ничего не произошло» на графике не
+// виден в принципе: вы видите только те места, где что-то случилось.
+// Для этого есть вкладка «Проверка» в веб-версии, где считается таблица
+// со всеми четырьмя исходами.
+
+//@version=6
+indicator("COT · Позиционирование участников", shorttitle="COT", overlay=false, precision=0)
+
+import TradingView/LibraryCOT/3 as cot
+
+// ═══ Настройки ═══════════════════════════════════════════════════════
+
+grpData = "Данные"
+reportType = input.string("Financial", "Тип отчёта", options=["Financial", "Disaggregated", "Legacy"],
+     tooltip="Financial — валюты, индексы, ставки, крипта (отчёт TFF).\nDisaggregated — металлы и товары.\nLegacy — старый формат: коммерческие и некоммерческие.",
+     group=grpData)
+includeOptions = input.bool(false, "Включать опционы", group=grpData,
+     tooltip="Futures Only (выкл) или Futures + Options (вкл). Для сопоставимости с веб-версией держите выключенным.")
+manualCode = input.string("", "Код CFTC вручную", group=grpData,
+     tooltip="Обычно не нужно: код определяется по символу графика. Заполните, если символ не распознан (например, для CFD или синтетики).")
+
+grpLag = "Лаг публикации"
+applyShift = input.bool(true, "Сдвигать данные к дате публикации", group=grpLag,
+     tooltip="ВКЛЮЧЕНО — данные появляются тогда, когда стали публичными (реалистично).\nВЫКЛЮЧЕНО — данные стоят датой замера, то есть на 3 дня раньше, чем вы могли их узнать. Это заглядывание в будущее.")
+shiftBars = input.int(1, "На сколько недельных баров сдвинуть", minval=0, maxval=4, group=grpLag,
+     tooltip="1 = данные за вторник видны со следующего недельного бара. Ставьте 1, если не уверены.")
+
+grpCalc = "Расчёты"
+lookback = input.int(52, "Окно диапазона, недель", minval=13, maxval=260, group=grpCalc,
+     tooltip="Внутри какого окна считается перцентиль и z-score. 52 недели — год.")
+extremeLow = input.int(10, "Нижний порог экстремума, %", minval=1, maxval=45, group=grpCalc)
+extremeHigh = input.int(90, "Верхний порог экстремума, %", minval=55, maxval=99, group=grpCalc)
+turnWeeks = input.int(2, "Недель подряд для разворота", minval=1, maxval=8, group=grpCalc)
+
+grpView = "Отображение"
+showSpec = input.bool(true, "Быстрые деньги (фонды)", group=grpView)
+showSlow = input.bool(true, "Медленные деньги", group=grpView)
+showOther = input.bool(false, "Третья группа", group=grpView)
+mode = input.string("Чистая позиция", "Что показывать",
+     options=["Чистая позиция", "Перцентиль (COT-индекс)", "Z-score", "Изменение за неделю"], group=grpView)
+
+grpSig = "Метки условий"
+markExtreme = input.bool(true, "Экстремум позиционирования", group=grpSig)
+markTurn = input.bool(true, "Разворот с экстремума", group=grpSig,
+     tooltip="Позиция у границы диапазона И развернулась на N недель подряд. По историческим проверкам это заметно содержательнее самого экстремума.")
+markDiverge = input.bool(true, "Расхождение групп", group=grpSig)
+markCovering = input.bool(true, "Рост нетто за счёт закрытия шортов", group=grpSig,
+     tooltip="Нетто растёт, а лонг почти не меняется — значит выбивает шортистов, а не приходят покупатели. Это разные вещи.")
+
+// ═══ Определение кода CFTC ══════════════════════════════════════════
+
+cftcCode = manualCode != "" ? manualCode : cot.convertRootToCOTCode("Auto", true)
+
+// ═══ Названия метрик по типу отчёта ═════════════════════════════════
+// Если запрос возвращает na, сверьтесь со списком метрик в описании
+// TradingView/LibraryCOT — состав полей отличается между отчётами.
+
+grpMetric = "Названия метрик (если библиотека ругается)"
+specMetricIn = input.string("Leveraged Funds Positions", "Быстрые деньги", group=grpMetric,
+     tooltip="Точный список названий — в описании TradingView/LibraryCOT, блок AVAILABLE METRICS. Меняйте здесь, код трогать не надо.")
+slowMetricIn = input.string("Asset Manager Positions", "Медленные деньги", group=grpMetric,
+     tooltip="Варианты, если не подошло: Asset Manager/Institutional Positions, Asset Manager Institutional, Asset Manager")
+otherMetricIn = input.string("Dealer Positions", "Третья группа", group=grpMetric,
+     tooltip="Варианты: Dealer Intermediary Positions, Dealer/Intermediary Positions, Dealer Intermediary")
+
+specMetric = reportType == "Financial" ? specMetricIn :
+     reportType == "Disaggregated" ? "Money Manager Positions" : "Noncommercial Positions"
+
+slowMetric = reportType == "Financial" ? slowMetricIn :
+     reportType == "Disaggregated" ? "Producer Merchant Processor User Positions" : "Commercial Positions"
+
+otherMetric = reportType == "Financial" ? otherMetricIn :
+     reportType == "Disaggregated" ? "Swap Dealer Positions" : "Nonreportable Positions"
+
+specLabel = reportType == "Financial" ? "Хедж-фонды" :
+     reportType == "Disaggregated" ? "Управляемые деньги" : "Некоммерческие"
+
+slowLabel = reportType == "Financial" ? "Управляющие активами" :
+     reportType == "Disaggregated" ? "Производители (хеджеры)" : "Коммерческие"
+
+otherLabel = reportType == "Financial" ? "Дилеры" :
+     reportType == "Disaggregated" ? "Своп-дилеры" : "Мелкие участники"
+
+// ═══ Запрос данных ══════════════════════════════════════════════════
+// lookahead намеренно НЕ включается: с ним Pine отдал бы значения раньше,
+// чем они реально появились, и весь смысл лаговой защиты пропал бы.
+
+req(metricName, direction) =>
+    cot.requestCommitmentOfTraders(reportType, cftcCode, includeOptions, metricName, direction, "All")
+
+specLongRaw  = req(specMetric,  "Long")
+specShortRaw = req(specMetric,  "Short")
+slowLongRaw  = req(slowMetric,  "Long")
+slowShortRaw = req(slowMetric,  "Short")
+otherLongRaw = req(otherMetric, "Long")
+otherShortRaw= req(otherMetric, "Short")
+oiRaw        = req("Open Interest", "No direction")
+
+// Сдвиг к дате публикации. Делается ОДИН раз здесь, чтобы ни один
+// расчёт ниже не мог случайно опереться на несдвинутые данные.
+shift(src) =>
+    applyShift ? src[shiftBars] : src
+
+specLong  = shift(specLongRaw)
+specShort = shift(specShortRaw)
+slowLong  = shift(slowLongRaw)
+slowShort = shift(slowShortRaw)
+otherLong = shift(otherLongRaw)
+otherShort= shift(otherShortRaw)
+oi        = shift(oiRaw)
+
+specNet  = specLong  - specShort
+slowNet  = slowLong  - slowShort
+otherNet = otherLong - otherShort
+
+// ═══ Производные показатели ═════════════════════════════════════════
+
+// Перцентиль внутри окна, текущее значение НЕ входит в собственную базу
+// сравнения: иначе новый исторический экстремум никогда не смог бы
+// достичь 100, потому что сравнивался бы сам с собой.
+pctRank(src, len) =>
+    prior = src[1]
+    float below = 0.0
+    float count = 0.0
+    for i = 0 to len - 1
+        v = prior[i]
+        if not na(v)
+            count += 1
+            if v < src
+                below += 1
+    count > 0 ? below / count * 100 : na
+
+zScore(src, len) =>
+    prior = src[1]
+    m = ta.sma(prior, len)
+    s = ta.stdev(prior, len)
+    s > 0 ? (src - m) / s : na
+
+specPct = pctRank(specNet, lookback)
+slowPct = pctRank(slowNet, lookback)
+specZ   = zScore(specNet, lookback)
+specChg = specNet - specNet[1]
+slowChg = slowNet - slowNet[1]
+specLongChg = specLong - specLong[1]
+
+// Серии: сколько баров подряд позиция растёт или падает
+var int upStreak = 0
+var int downStreak = 0
+if not na(specChg)
+    upStreak := specChg > 0 ? upStreak + 1 : 0
+    downStreak := specChg < 0 ? downStreak + 1 : 0
+
+// ═══ Условия ════════════════════════════════════════════════════════
+
+isExtremeLow  = not na(specPct) and specPct <= extremeLow
+isExtremeHigh = not na(specPct) and specPct >= extremeHigh
+turningUp     = not na(specPct) and specPct <= extremeLow * 2 and upStreak >= turnWeeks
+turningDown   = not na(specPct) and specPct >= 100 - (100 - extremeHigh) * 2 and downStreak >= turnWeeks
+
+spec4 = specNet - specNet[4]
+slow4 = slowNet - slowNet[4]
+diverging = not na(spec4) and not na(slow4) and spec4 * slow4 < 0
+
+// Нетто вырос, но лонг дал меньше трети прироста → это закрытие шортов
+shortCovering = not na(specChg) and specChg > 0 and math.abs(specLongChg) < math.abs(specChg) / 3
+
+// ═══ Отрисовка ══════════════════════════════════════════════════════
+
+plotSpec = switch mode
+    "Чистая позиция"          => specNet
+    "Перцентиль (COT-индекс)" => specPct
+    "Z-score"                 => specZ
+    => specChg
+
+plotSlow = switch mode
+    "Чистая позиция"          => slowNet
+    "Перцентиль (COT-индекс)" => slowPct
+    "Z-score"                 => zScore(slowNet, lookback)
+    => slowChg
+
+plotOther = switch mode
+    "Чистая позиция"          => otherNet
+    "Перцентиль (COT-индекс)" => pctRank(otherNet, lookback)
+    "Z-score"                 => zScore(otherNet, lookback)
+    => otherNet - otherNet[1]
+
+colSpec  = color.new(#26D97F, 0)
+colSlow  = color.new(#F0B429, 0)
+colOther = color.new(#FF5C55, 0)
+
+p1 = plot(showSpec  ? plotSpec  : na, "Быстрые деньги",   color=colSpec,  linewidth=2)
+p2 = plot(showSlow  ? plotSlow  : na, "Медленные деньги", color=colSlow,  linewidth=2)
+p3 = plot(showOther ? plotOther : na, "Третья группа",    color=colOther, linewidth=1)
+
+hline(0, "Ноль", color=color.new(color.gray, 55), linestyle=hline.style_dashed)
+
+// Зоны экстремума видны только в режиме перцентиля, где у них есть смысл
+bool pctMode = mode == "Перцентиль (COT-индекс)"
+hiBand = plot(pctMode ? extremeHigh : na, "Верхняя граница", color=color.new(color.gray, 75))
+loBand = plot(pctMode ? extremeLow  : na, "Нижняя граница",  color=color.new(color.gray, 75))
+fill(hiBand, loBand, color=color.new(color.gray, 95), title="Обычный диапазон")
+
+// ═══ Метки условий ══════════════════════════════════════════════════
+
+plotshape(markExtreme and isExtremeLow  and not isExtremeLow[1],  "Экстремальный шорт",
+     shape.triangleup,   location.bottom, color.new(#26D97F, 20), size=size.tiny)
+plotshape(markExtreme and isExtremeHigh and not isExtremeHigh[1], "Экстремальный лонг",
+     shape.triangledown, location.top,    color.new(#FF5C55, 20), size=size.tiny)
+
+plotshape(markTurn and turningUp and not turningUp[1], "Разворот вверх с низов",
+     shape.circle, location.bottom, color.new(#8B7CFF, 0), size=size.small)
+plotshape(markTurn and turningDown and not turningDown[1], "Разворот вниз с верхов",
+     shape.circle, location.top, color.new(#8B7CFF, 0), size=size.small)
+
+plotshape(markDiverge and diverging and not diverging[1], "Расхождение групп",
+     shape.xcross, location.bottom, color.new(#3ECFDA, 30), size=size.tiny)
+
+plotshape(markCovering and shortCovering, "Закрытие шортов",
+     shape.square, location.bottom, color.new(#F0B429, 40), size=size.tiny)
+
+// ═══ Таблица текущего состояния ═════════════════════════════════════
+
+var table info = table.new(position.top_right, 2, 9,
+     bgcolor=color.new(#11161F, 10), border_color=color.new(#252C3B, 0), border_width=1)
+
+f_row(row, k, v, col) =>
+    table.cell(info, 0, row, k, text_color=color.new(#9BA6B8, 0), text_size=size.small, text_halign=text.align_left)
+    table.cell(info, 1, row, v, text_color=col, text_size=size.small, text_halign=text.align_right)
+
+if barstate.islast
+    netOiPct = not na(oi) and oi > 0 ? specNet / oi * 100 : na
+    f_row(0, "Отчёт", reportType == "Financial" ? "TFF" : reportType, color.new(#F2F4F8, 0))
+    f_row(1, specLabel, str.tostring(specNet, "#,###"), specNet >= 0 ? colSpec : colOther)
+    f_row(2, "Доля от OI", na(netOiPct) ? "—" : str.tostring(netOiPct, "#.#") + "%",
+         color.new(#F2F4F8, 0))
+    f_row(3, "Перцентиль", na(specPct) ? "—" : str.tostring(specPct, "#") ,
+         na(specPct) ? color.gray : specPct <= extremeLow ? colOther : specPct >= extremeHigh ? colSpec : color.new(#F0B429, 0))
+    f_row(4, "Z-score", na(specZ) ? "—" : str.tostring(specZ, "#.##"), color.new(#F2F4F8, 0))
+    f_row(5, "Δ за неделю", na(specChg) ? "—" : str.tostring(specChg, "#,###"),
+         na(specChg) ? color.gray : specChg >= 0 ? colSpec : colOther)
+    f_row(6, slowLabel, str.tostring(slowNet, "#,###"), slowNet >= 0 ? colSlow : colOther)
+    f_row(7, otherLabel, str.tostring(otherNet, "#,###"), color.new(#9BA6B8, 0))
+    f_row(8, applyShift ? "Сдвиг публикации: вкл" : "СДВИГ ВЫКЛ — заглядывание!",
+         applyShift ? "ok" : "!", applyShift ? color.new(#26D97F, 0) : color.new(#FF5C55, 0))
+
+// ═══ Оповещения ═════════════════════════════════════════════════════
+
+alertcondition(turningUp   and not turningUp[1],   "COT: разворот вверх с низов",  "Быстрые деньги разворачиваются вверх с нижней границы диапазона")
+alertcondition(turningDown and not turningDown[1], "COT: разворот вниз с верхов",  "Быстрые деньги разворачиваются вниз с верхней границы диапазона")
+alertcondition(isExtremeLow  and not isExtremeLow[1],  "COT: экстремальный шорт", "Позиционирование быстрых денег достигло нижнего экстремума")
+alertcondition(isExtremeHigh and not isExtremeHigh[1], "COT: экстремальный лонг", "Позиционирование быстрых денег достигло верхнего экстремума")

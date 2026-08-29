@@ -24,7 +24,7 @@ from src.analogs.similarity import fit, find_analogs
 from src.analogs.baserate import compare_to_base_rate
 from src.ai.analysis_ru import AnalysisContext, ParticipantSnapshot, AnalogCase, build_full_analysis
 from src.ai.briefing_ru import Flow, BriefingInput, build_facts
-from src.events.validation import validate_all
+from src.events.validation import validate_all, precursors_all, price_ref
 
 REGIME_RU = {
     "Bullish Reversal": "Разворот вверх", "Bearish Reversal": "Разворот вниз",
@@ -129,6 +129,7 @@ def snap(row, key):
 
 def analyze(states, code):
     m = market(code)
+    has_price = bool(m.fred_series or m.stooq_symbol)
     sk, lk, ok = spec_key(code), slow_key(code), other_side_key(code)
     participants = PARTICIPANTS_BY_REPORT[m.report]
 
@@ -269,7 +270,9 @@ def analyze(states, code):
         "horizon_stats": {str(h): s for h, s in horizon_stats.items()},
         "sections": sections,
         "facts": facts,
-        "validation": validate_all(states, sk, lk) if m.fred_series or m.stooq_symbol else [],
+        "validation": validate_all(states, sk, lk, m.pip, m.unit) if has_price else [],
+        "precursors": precursors_all(states, sk, lk) if has_price else [],
+        "pip": m.pip, "unit": m.unit, "price_ref": clean(price_ref(states)),
         "history": [
             {"d": str(r["report_date"]), "p": clean(r.get("price_close")),
              "oi": clean(r.get(f"{sk}_open_interest")),

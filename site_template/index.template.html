@@ -650,27 +650,58 @@ function bindAnalogs(m){
 let vCond=null,vEv=null;
 
 function pCheck(m){
-  const V=m.validation||[];
-  if(!V.length)return `<div class="pn"><div class="pr">Для этого рынка нет ценового ряда — проверить движения не с чем.</div></div>`;
+  const V=m.validation||[],P=m.precursors||[];
+  if(!V.length)return `<div class="pn"><div class="pr">Для этого рынка нет ценового ряда — сверять движения не с чем.</div></div>`;
   const conds=[...new Map(V.map(x=>[x.cond_key,x])).values()];
   const evs=[...new Map(V.map(x=>[x.ev_key,x])).values()];
   vCond=vCond||conds[0].cond_key; vEv=vEv||evs[0].ev_key;
   const r=V.find(x=>x.cond_key===vCond&&x.ev_key===vEv)||V[0];
+  const pr=P.find(x=>x.ev_key===vEv);
   const p=x=>x==null?"—":(x*100).toFixed(0)+"%";
+  const num=x=>x==null?"—":(x>=0?"+":"")+Math.round(x).toLocaleString("ru-RU").replace(/,/g," ");
+
+  const precursorBlock=!pr?"":`<div class="pn">
+    <h3>Что происходило перед крупными движениями</h3>
+    <div class="ps">Взяты ${pr.n_moves} самых крупных движений «${E(pr.event.toLowerCase())}» за всю историю.
+      Показано, что творилось в отчётах за ${pr.weeks_before} недели до каждого — рядом с тем, что бывает
+      в обычную неделю. Если колонки одинаковые, предвестника нет: участники просто всегда так делают.</div>
+    <table class="cmp"><thead><tr><th>Показатель</th><th>За ${pr.weeks_before} нед. до движения</th><th>В обычную неделю</th><th>Разница</th></tr></thead>
+      <tbody>${pr.metrics.map(x=>`<tr><td>${E(x.label)}</td>
+        <td class="mn">${x.kind==="p"?Math.round(x.before):num(x.before)}</td>
+        <td class="mn t3">${x.kind==="p"?Math.round(x.always):num(x.always)}</td>
+        <td class="mn ${tn(x.diff)}">${x.kind==="p"?(x.diff>=0?"+":"")+x.diff.toFixed(0):num(x.diff)}</td></tr>`).join("")}</tbody></table>
+    <h3 style="margin-top:22px">Какие признаки встречались перед движениями чаще обычного</h3>
+    <div class="ps">Доля движений, перед которыми признак был, против того, как часто он бывает вообще.</div>
+    <table class="cmp"><thead><tr><th>Признак</th><th>Перед движениями</th><th>Обычно</th><th>Разница</th></tr></thead>
+      <tbody>${pr.conditions.slice(0,7).map(c=>`<tr><td>${E(c.cond)}</td>
+        <td class="mn">${(c.share_before*100).toFixed(0)}%</td>
+        <td class="mn t3">${(c.base_share*100).toFixed(0)}%</td>
+        <td class="mn ${tn(c.diff_pp)}"><b>${(c.diff_pp>=0?"+":"")+c.diff_pp.toFixed(0)} п.п.</b></td></tr>`).join("")}</tbody></table>
+    <div class="ps" style="margin-top:14px">Это подсказка, где искать, а не доказательство. Признак может встречаться
+      перед движениями чаще и при этом всё равно давать много ложных срабатываний — это видно в таблице ниже.</div>
+  </div>`;
+
   return `<div class="pn">
     <h3>Проверка на истории</h3>
-    <div class="ps">Вопрос: были ли подсказки в отчётах перед крупными движениями? Ответ даёт не подборка
-      удачных примеров, а таблица из четырёх клеток. Клетка «условие было, движения не было» — самая важная:
-      если она большая, признак не предупреждает ни о чём, сколько бы красивых случаев ни нашлось.</div>
+    <div class="ps">Порог «крупного движения» подбирается под сам инструмент: это верхние 10–20%
+      его собственных движений, а не одинаковые для всех проценты. Иначе для евро порог в 5%
+      означал бы почти нулевую выборку, а для золота — рядовое колебание.</div>
     <div class="ctl" style="margin-bottom:18px">
-      <span class="cl">Признак в отчёте</span>
-      <select id="vc">${conds.map(c=>`<option value="${c.cond_key}"${c.cond_key===vCond?" selected":""}>${E(c.cond)}</option>`).join("")}</select>
       <span class="cl">Движение</span>
       <select id="ve">${evs.map(e=>`<option value="${e.ev_key}"${e.ev_key===vEv?" selected":""}>${E(e.ev)}</option>`).join("")}</select>
+      <span class="cl">Признак в отчёте</span>
+      <select id="vc">${conds.map(c=>`<option value="${c.cond_key}"${c.cond_key===vCond?" selected":""}>${E(c.cond)}</option>`).join("")}</select>
     </div>
-    <div class="ps" style="margin-bottom:16px"><b style="color:var(--tx)">${E(r.cond)}</b> — ${E(r.cond_desc)}<br>
-      <b style="color:var(--tx)">${E(r.ev)}</b> — ${E(r.ev_desc)}</div>
-    <table class="cmp" style="max-width:640px">
+    ${r.threshold_pts!=null?`<div class="alert a-gd">Порог для этого инструмента: <b>${Math.abs(r.threshold_pts).toLocaleString("ru-RU").replace(/,/g," ")} ${E(r.unit)}</b>
+      (${(r.threshold_pct*100).toFixed(2)}%). Движения меньше этого крупными не считаются.</div>`:""}
+  </div>
+
+  ${precursorBlock}
+
+  <div class="pn">
+    <h3>Прямая проверка: ${E(r.cond.toLowerCase())} → ${E(r.ev.toLowerCase())}</h3>
+    <div class="ps">${E(r.cond_desc)}</div>
+    <table class="cmp" style="max-width:660px">
       <thead><tr><th></th><th>движение было</th><th>движения не было</th><th>доля</th></tr></thead>
       <tbody>
         <tr><td><b style="color:var(--tx)">признак был</b></td>
@@ -687,15 +718,7 @@ function pCheck(m){
     <div class="pr" style="margin-top:6px">${E(r.verdict)}</div>
     ${r.dates.length?`<details style="margin-top:16px"><summary>Даты, когда признак выполнялся (${r.dates.length} последних)</summary>
       <div class="mn t3" style="margin-top:12px;font-size:11.5px;line-height:2">${r.dates.map(d=>E(d)).join(" · ")}</div></details>`:""}
-  </div>
-  <div class="pn"><h3>Как это читать</h3>
-    <ul class="ul">
-      <li>Признаки и движения заданы формулой заранее — их нельзя подогнать под удачные случаи задним числом.</li>
-      <li>Условие проверяется на данных, доступных на дату отчёта; движение ищется строго после неё.</li>
-      <li>Наблюдения, у которых горизонт ещё не прошёл, в счёт не идут — иначе они считались бы за «движения не было».</li>
-      <li>Меньше ${MIN_N} случаев — вывод не делается вообще.</li>
-      <li>Недельные наблюдения перекрываются, поэтому независимых случаев меньше, чем показывает N. Разницу до 5 п.п. считайте шумом.</li>
-    </ul></div>`;
+  </div>`;
 }
 
 function bindCheck(){
