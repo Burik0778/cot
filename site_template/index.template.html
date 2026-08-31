@@ -433,7 +433,7 @@ function drawScr(){
 /* ─── деталь ─── */
 function open(code){cur=DATA.markets.find(m=>m.code===code);tab="dash";
   $("scr").classList.add("hide");$("det").classList.remove("hide");draw();window.scrollTo({top:0,behavior:"smooth"});}
-const TABS=[["dash","Обзор"],["strips","Диапазоны"],["hist","История"],["check","Проверка"],["net","Чистые позиции"],["tbl","Таблица"]];
+const TABS=[["dash","Обзор"],["strips","Диапазоны"],["hist","История"],["why","Доказательства"],["check","Проверка"],["net","Чистые позиции"],["tbl","Таблица"]];
 
 function draw(){
   const m=cur,S=m.sections[hz],st=m.horizon_stats[hz]||{},s=SPEC(m),h=m.history.slice(-per);
@@ -456,11 +456,12 @@ function draw(){
   $("det").querySelectorAll(".tb").forEach(b=>b.onclick=()=>{tab=b.dataset.t;draw();});
   $("det").querySelectorAll("[data-h]").forEach(b=>b.onclick=()=>{hz=b.dataset.h;draw();});
   $("det").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{per=+b.dataset.p;draw();});
-  $("pn").innerHTML=({dash:pDash,strips:pStrips,hist:pHist,check:pCheck,net:pNet,tbl:pTbl})[tab](m,S,st,h);
+  $("pn").innerHTML=({dash:pDash,strips:pStrips,hist:pHist,why:pWhy,check:pCheck,net:pNet,tbl:pTbl})[tab](m,S,st,h);
   bindHover($("pn"),h);
   $("pn").querySelectorAll(".exp").forEach(b=>b.onclick=e=>{e.stopPropagation();openModal(b.dataset.x);});
   if(tab==="hist")bindAnalogs(m);
   if(tab==="check")bindCheck();
+  if(tab==="why")bindWhy();
 }
 
 
@@ -648,6 +649,86 @@ function bindAnalogs(m){
 }
 
 let vCond=null,vEv=null;
+
+let evMode="cot_only";
+
+function pWhy(m){
+  const EV=m.evidence||{};
+  const keys=Object.keys(EV);
+  if(!keys.length)return `<div class="pn"><div class="pr">Для этого рынка нет ценового ряда — доказательную базу построить не из чего.</div></div>`;
+  if(!EV[evMode])evMode=keys[0];
+  const mv=EV[evMode], per=mv.horizons[hz];
+  if(!per)return `<div class="pn"><div class="pr">Нет данных на этом горизонте.</div></div>`;
+  const e=per.evidence, S=per.sampling;
+  const pct=x=>x==null?"—":(x*100).toFixed(0)+"%";
+  const ci=c=>c==null?"—":`[${(c[0]*100).toFixed(1)}%, ${(c[1]*100).toFixed(1)}%]`;
+  const ciR=c=>c==null?"—":`[${(c[0]*100).toFixed(2)}%, ${(c[1]*100).toFixed(2)}%]`;
+  const proven=!/НЕ доказано|шума|не подтверждено/.test(e.verdict);
+
+  return `<div class="pn">
+    <h3>Почему система считает, что преимущество есть или его нет</h3>
+    <div class="ps">Ниже всё, на чём стоит вывод. Если чего-то из этого не хватает,
+      преимущество не считается доказанным — каким бы убедительным ни выглядел процент.</div>
+    <div class="ctl">
+      <span class="cl">Режим аналогов</span>
+      <div class="sgs">${keys.map(k=>`<button class="sg${k===evMode?" on":""}" data-em="${k}">${E(EV[k].mode_ru)}</button>`).join("")}</div>
+    </div>
+    <div class="alert ${proven?"a-gd":"a-red"}">${E(e.verdict)}</div>
+  </div>
+
+  <div class="g2">
+    <div class="pn"><h3>Основные цифры</h3>
+      <table class="cmp"><tbody>
+        <tr><td>Доля после аналогов</td><td class="mn"><b>${pct(e.conditional_rate)}</b></td></tr>
+        <tr><td>Базовая ставка (всегда)</td><td class="mn t3">${pct(e.base_rate)}</td></tr>
+        <tr><td>Разница</td><td class="mn ${tn(e.edge_pp)}"><b>${e.edge_pp==null?"—":(e.edge_pp>=0?"+":"")+e.edge_pp.toFixed(1)+" п.п."}</b></td></tr>
+        <tr><td>Медиана после аналогов</td><td class="mn">${e.median_return==null?"—":sp(e.median_return,2)}</td></tr>
+        <tr><td>Медиана вообще</td><td class="mn t3">${e.base_median_return==null?"—":sp(e.base_median_return,2)}</td></tr>
+      </tbody></table></div>
+
+    <div class="pn"><h3>Размер выборки</h3>
+      <table class="cmp"><tbody>
+        <tr><td>Сырых наблюдений</td><td class="mn">${e.raw_n}</td></tr>
+        <tr><td>Без перекрытия</td><td class="mn"><b>${e.non_overlapping_n}</b></td></tr>
+        <tr><td>Эффективный размер</td><td class="mn"><b>${e.effective_n}</b></td></tr>
+        <tr><td>Качество</td><td class="mn">${E(e.quality)}</td></tr>
+      </tbody></table>
+      <div class="ps" style="margin:12px 0 0">Недельные наблюдения с горизонтом ${hz} нед. делят
+        ${hz-1} недель из ${hz}. Сырое число завышает независимость примерно в ${hz} раз.</div></div>
+  </div>
+
+  <div class="pn"><h3>Доверительные интервалы</h3>
+    <div class="ps">${E(e.ci_method_note)}</div>
+    <table class="cmp"><thead><tr><th>Величина</th><th>Блочный бутстрап</th><th>Обычный (для сравнения)</th></tr></thead>
+      <tbody>
+        <tr><td>Доля положительных</td><td class="mn"><b>${ci(e.ci_block_win_rate)}</b></td><td class="mn t3">—</td></tr>
+        <tr><td>Медианная доходность</td><td class="mn"><b>${ciR(e.ci_block_median)}</b></td><td class="mn t3">${ciR(e.ci_iid_median)}</td></tr>
+      </tbody></table></div>
+
+  <div class="pn"><h3>Три режима выборки</h3>
+    <div class="ps">Одни и те же данные, разная честность учёта зависимости.</div>
+    <table class="cmp"><thead><tr><th>Режим</th><th>Использовано</th><th>Эффективно</th><th>Доля</th><th>Медиана</th><th>Качество</th></tr></thead>
+      <tbody>${Object.values(S).map(s=>`<tr><td>${E(s.mode_ru)}</td>
+        <td class="mn">${s.used_n}</td><td class="mn">${s.effective_n}</td>
+        <td class="mn">${pct(s.win_rate)}</td><td class="mn">${s.median_return==null?"—":sp(s.median_return,2)}</td>
+        <td class="mn t3">${E(s.quality)}</td></tr>`).join("")}</tbody></table></div>
+
+  <div class="pn"><h3>Происхождение результата</h3>
+    <table class="cmp"><tbody>
+      <tr><td>Режим аналогов</td><td class="mn">${E(e.analog_mode_ru)}</td></tr>
+      <tr><td>Признаки (${Object.keys(e.features).length})</td><td class="mn t3" style="text-align:right;font-size:11px">${Object.keys(e.features).map(E).join("<br>")}</td></tr>
+      <tr><td>Период данных</td><td class="mn t3">${E(e.data_start)} — ${E(e.data_end)}</td></tr>
+      <tr><td>Расчёт на дату</td><td class="mn t3">${E(e.as_of)}</td></tr>
+      <tr><td>Источник</td><td class="mn t3">${E(e.data_source)}</td></tr>
+    </tbody></table></div>
+
+  <div class="pn"><h3>Оговорки, которые нельзя пропустить</h3>
+    <ul class="ul">${e.caveats.map(c=>`<li>${E(c)}</li>`).join("")}</ul></div>`;
+}
+
+function bindWhy(){
+  $("pn").querySelectorAll("[data-em]").forEach(b=>b.onclick=()=>{evMode=b.dataset.em;draw();});
+}
 
 function pCheck(m){
   const V=m.validation||[],P=m.precursors||[];

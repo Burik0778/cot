@@ -109,19 +109,32 @@ class TestBacktestEngine(unittest.TestCase):
 
 
 class TestEventStudy(unittest.TestCase):
-    def test_event_study_summarizes_only_matured_horizons(self):
-        n = 20
-        dates = pd.date_range("2015-01-06", periods=n, freq="7D").date
+    """Событийный анализ переписан: теперь считает по ценовому ряду, знает
+    отрицательные горизонты и склеивает подряд идущие срабатывания в
+    эпизоды. Подробные тесты — в tests/test_event_study.py; здесь
+    проверяется только, что вызов из общего пайплайна не развалился."""
+
+    def test_runs_from_price_series(self):
+        n = 40
         df = pd.DataFrame({
-            "report_date": dates,
-            "flag": [True, False] * 10,
-            "fwd_return_1w": np.linspace(0.01, 0.02, n),
-            "fwd_return_4w": [np.nan] * n,  # nothing matured at this horizon
+            "report_date": pd.date_range("2020-01-07", periods=n, freq="7D").date,
+            "price_close": np.linspace(100, 120, n),
         })
-        result = run_event_study(df, df["flag"], horizons_weeks=[1, 4])
-        self.assertEqual(result.n_events, 10)
-        self.assertIsNotNone(result.mean_cumulative_return[1])
-        self.assertIsNone(result.mean_cumulative_return[4])
+        mask = pd.Series([False] * 20 + [True] + [False] * (n - 21))
+        result = run_event_study(df, mask, horizons=[-4, 0, 4])
+        self.assertEqual(result.mean[0], 0.0)
+        self.assertIsNotNone(result.mean[-4])
+        self.assertIsNotNone(result.mean[4])
+
+    def test_immature_horizon_is_not_counted(self):
+        n = 20
+        df = pd.DataFrame({
+            "report_date": pd.date_range("2020-01-07", periods=n, freq="7D").date,
+            "price_close": np.linspace(100, 110, n),
+        })
+        mask = pd.Series([False] * 18 + [True, False])
+        result = run_event_study(df, mask, horizons=[0, 12])
+        self.assertEqual(result.counts[12], 0)
 
 
 if __name__ == "__main__":

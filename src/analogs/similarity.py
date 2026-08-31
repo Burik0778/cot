@@ -33,7 +33,7 @@ No-look-ahead guards enforced HERE, not left to the caller:
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 import numpy as np
 import pandas as pd
 
@@ -54,10 +54,35 @@ def _assert_features_are_not_outcomes(feature_names: list[str]) -> None:
         )
 
 
+def _to_date(v):
+    """
+    Приводит значение к datetime.date БЕЗ pd.to_datetime.
+
+    Причина: pandas 2.x по умолчанию использует datetime64[ns], у которого
+    верхняя граница 2262-04-11. Дата за этой границей роняет конверсию
+    с OutOfBoundsDatetime вместо того, чтобы штатно сравниться. Защита от
+    look-ahead обязана работать на любой дате, поэтому сравниваем
+    непосредственно объекты date.
+    """
+    if v is None:
+        return None
+    if isinstance(v, date) and not isinstance(v, datetime):
+        return v
+    if isinstance(v, datetime):
+        return v.date()
+    if isinstance(v, str):
+        return datetime.strptime(v[:10], "%Y-%m-%d").date()
+    to_pydatetime = getattr(v, "to_pydatetime", None)
+    if callable(to_pydatetime):
+        return to_pydatetime().date()
+    return v
+
+
 def _assert_pool_is_available(pool: pd.DataFrame, as_of_date: date, availability_col: str = "availability_date") -> None:
     if availability_col not in pool.columns:
         return
-    future_rows = pool[pd.to_datetime(pool[availability_col]).dt.date > as_of_date]
+    converted = pool[availability_col].map(_to_date)
+    future_rows = pool[converted.map(lambda d: d is not None and d > as_of_date)]
     if len(future_rows) > 0:
         raise LookaheadError(
             f"Reference pool contains {len(future_rows)} row(s) with availability_date "

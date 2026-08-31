@@ -1,3 +1,7 @@
+<!-- TEST_COUNT_START -->
+**258 automated tests.** Run `python -m pytest` or `python -m unittest discover -s tests`.
+<!-- TEST_COUNT_END -->
+
 # COT Research Platform
 
 A research system for Commitments of Traders (CFTC TFF Futures Only) positioning
@@ -21,7 +25,7 @@ about what was *executed*, not what was *written*.
 
 | Area | How it was verified |
 |---|---|
-| 132 automated tests | `python -m unittest discover -s tests` — all pass |
+| Automated tests | `python -m pytest` (или `python -m unittest discover -s tests`) — счётчик в шапке README обновляется скриптом `scripts/count_tests.py`, не вручную |
 | Percentile / z-score exclude the current observation | Hand-computed examples in `tests/test_percentile.py`, plus a test proving a new all-time-high can reach exactly the 100th percentile (impossible if self-inclusion were happening) |
 | No look-ahead in analogs | `tests/test_analog_engine.py` — engine *raises* if the reference pool contains rows with `availability_date` after the as-of date, and *raises* if a `fwd_return_*` column is passed as a matching feature (label leakage) |
 | Forward returns are maturity-aware | Unmatured horizons return `None`, never 0 or a guess (`tests/test_quote_convention_and_returns.py`) |
@@ -161,7 +165,7 @@ src/pipeline.py         raw → processed → market_states
 site/                   Static site: template.html + generated index.html
 dashboard/              standalone HTML/JS snapshot
 scripts/                init_db, refresh_data, validate_date, run_demo, build_site
-tests/                  132 tests
+tests/                  автотесты (число — см. шапку README)
 docs/                   METHODOLOGY, DATA_SOURCES, STATISTICS, BACKTESTING, AI, LIMITATIONS
 ```
 

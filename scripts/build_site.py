@@ -25,6 +25,9 @@ from src.analogs.baserate import compare_to_base_rate
 from src.ai.analysis_ru import AnalysisContext, ParticipantSnapshot, AnalogCase, build_full_analysis
 from src.ai.briefing_ru import Flow, BriefingInput, build_facts
 from src.events.validation import validate_all, precursors_all, price_ref
+from src.analogs.sampling import summarize_all_modes, SamplingMode
+from src.analogs.evidence import build_edge_evidence
+from src.data.availability_guard import DataAvailabilityGuard
 
 REGIME_RU = {
     "Bullish Reversal": "Разворот вверх", "Bearish Reversal": "Разворот вниз",
@@ -142,11 +145,52 @@ def analyze(states, code):
 
     current = states.iloc[-1]
     analog_cases, horizon_stats, analog_pcts, analog_details = [], {}, [], []
+    evidence_by_mode = {}
 
+    evidence_by_mode = {}
     if has_analogs:
         cur = usable.iloc[-1]
-        fitted = fit(usable.iloc[:-1], settings.DEFAULT_ANALOG_FEATURES)
-        found = find_analogs(fitted, cur, as_of_date=cur["availability_date"],
+        as_of = cur["availability_date"]
+
+        # Единый guard вместо самодельных проверок в каждом модуле
+        guard = DataAvailabilityGuard(as_of, strict=False)
+        pool = usable.iloc[:-1]
+        guard.assert_frame_available(pool, f"{code}: пул аналогов")
+
+        # Два режима: без цены и с ценой. Пока цена внутри признаков,
+        # нельзя сказать, есть ли преимущество в самом COT.
+        for mode_key, (mode_ru, feat) in settings.ANALOG_MODES.items():
+            avail = {f: w for f, w in feat.items() if f in usable.columns}
+            if len(avail) < 3:
+                continue
+            try:
+                f_mode = fit(pool, avail)
+                found_mode = find_analogs(f_mode, cur, as_of_date=as_of,
+                                           max_analogs=settings.DEFAULT_MAX_ANALOGS)
+            except Exception:  # noqa: BLE001 — режим может не собраться, остальные не роняем
+                continue
+            rows_mode = usable.loc[[a.index for a in found_mode]]
+            per_h = {}
+            for h in HORIZONS:
+                col = f"fwd_return_{h}w"
+                if col not in usable.columns:
+                    continue
+                ev = build_edge_evidence(
+                    rows_mode[col], usable[col], code, h, mode_key, mode_ru,
+                    features=avail, conditions=[f"{len(found_mode)} ближайших аналогов"],
+                    data_start=str(usable["report_date"].iloc[0]),
+                    data_end=str(usable["report_date"].iloc[-1]),
+                    as_of=str(as_of))
+                modes_s = summarize_all_modes(rows_mode[col], h)
+                per_h[str(h)] = {
+                    "evidence": ev.to_dict(),
+                    "sampling": {k: vars(v) for k, v in modes_s.items()},
+                }
+            evidence_by_mode[mode_key] = {"mode_ru": mode_ru, "horizons": per_h,
+                                           "n_features": len(avail)}
+
+        fitted = fit(pool, settings.DEFAULT_ANALOG_FEATURES)
+        found = find_analogs(fitted, cur, as_of_date=as_of,
                               max_analogs=settings.DEFAULT_MAX_ANALOGS)
         rows = usable.loc[[a.index for a in found]]
         analog_pcts = [clean(usable.loc[a.index].get(f"{sk}_pct_52w")) for a in found]
@@ -269,6 +313,7 @@ def analyze(states, code):
                      for a in analog_cases],
         "horizon_stats": {str(h): s for h, s in horizon_stats.items()},
         "sections": sections,
+        "evidence": evidence_by_mode,
         "facts": facts,
         "validation": validate_all(states, sk, lk, m.pip, m.unit) if has_price else [],
         "precursors": precursors_all(states, sk, lk) if has_price else [],

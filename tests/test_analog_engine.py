@@ -31,7 +31,10 @@ class TestAnalogEngineGuards(unittest.TestCase):
         pool = _pool()
         fitted = fit(pool, {"feat_a": 1.0, "feat_b": 1.0})
         future_pool = pool.copy()
-        future_pool.loc[0, "availability_date"] = date(2999, 1, 1)
+        # Дата в будущем, но внутри диапазона datetime64[ns] (потолок
+        # 2262-04-11). 2999 год ронял pandas 2.x с OutOfBoundsDatetime
+        # раньше, чем срабатывала сама проверка на look-ahead.
+        future_pool.loc[0, "availability_date"] = date(2030, 1, 1)
         fitted_bad = fit(future_pool, {"feat_a": 1.0, "feat_b": 1.0})
         with self.assertRaises(LookaheadError):
             find_analogs(fitted_bad, pool.iloc[-1], as_of_date=date(2020, 1, 1))
@@ -148,3 +151,46 @@ class TestValidity(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDateHandlingRobustness(unittest.TestCase):
+    """
+    Регрессия на реальный баг: тест использовал 2999-01-01, а защита от
+    look-ahead внутри звала pd.to_datetime. На pandas 2.x это
+    datetime64[ns] с потолком 2262-04-11, поэтому вместо честного
+    LookaheadError вылетал OutOfBoundsDatetime — и защита фактически не
+    работала. У автора на pandas 3.x (datetime64[s]) всё проходило, у
+    пользователя падало.
+    """
+
+    def test_far_future_date_raises_lookahead_not_pandas_error(self):
+        from datetime import date as _date
+        pool = _pool()
+        pool.loc[0, "availability_date"] = _date(2260, 1, 1)   # у самой границы ns
+        fitted = fit(pool, {"feat_a": 1.0, "feat_b": 1.0})
+        with self.assertRaises(LookaheadError):
+            find_analogs(fitted, pool.iloc[-1], as_of_date=_date(2020, 1, 1))
+
+    def test_beyond_ns_bounds_still_raises_lookahead(self):
+        from datetime import date as _date
+        pool = _pool()
+        pool.loc[0, "availability_date"] = _date(2500, 6, 15)   # заведомо за границей ns
+        fitted = fit(pool, {"feat_a": 1.0, "feat_b": 1.0})
+        with self.assertRaises(LookaheadError):
+            find_analogs(fitted, pool.iloc[-1], as_of_date=_date(2020, 1, 1))
+
+    def test_string_dates_are_handled(self):
+        from datetime import date as _date
+        pool = _pool()
+        pool["availability_date"] = pool["availability_date"].astype(str)
+        fitted = fit(pool, {"feat_a": 1.0, "feat_b": 1.0})
+        results = find_analogs(fitted, pool.iloc[-1], as_of_date=_date(2030, 1, 1))
+        self.assertGreater(len(results), 0)
+
+    def test_timestamp_dates_are_handled(self):
+        from datetime import date as _date
+        pool = _pool()
+        pool["availability_date"] = pd.to_datetime(pool["availability_date"])
+        fitted = fit(pool, {"feat_a": 1.0, "feat_b": 1.0})
+        results = find_analogs(fitted, pool.iloc[-1], as_of_date=_date(2030, 1, 1))
+        self.assertGreater(len(results), 0)

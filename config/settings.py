@@ -128,6 +128,30 @@ EXPANSION_RATIO_THRESHOLD: float = 1.5     # std(now) > 1.5 * std(prior window) 
 # Analog engine defaults (spec sections 12-14)
 # ---------------------------------------------------------------------------
 
+# Два набора признаков вместо одного. Смешивать их нельзя: пока цена
+# сидит в признаках по умолчанию, невозможно ответить на вопрос «есть ли
+# преимущество в самом COT» — оно может целиком идти от ценового тренда.
+ANALOG_FEATURES_COT_ONLY: Dict[str, float] = {
+    "leveraged_funds_net_oi": 1.0,
+    "leveraged_funds_pct_52w": 1.0,
+    "leveraged_funds_z_52w": 0.75,
+    "leveraged_funds_chg_4w_z": 0.75,
+    "asset_manager_net_oi": 0.75,
+    "asset_manager_pct_52w": 0.5,
+    "asset_manager_chg_4w_z": 0.5,
+}
+
+ANALOG_FEATURES_COT_PRICE: Dict[str, float] = {
+    **ANALOG_FEATURES_COT_ONLY,
+    "price_chg_8w_z": 0.5,
+}
+
+ANALOG_MODES = {
+    "cot_only": ("Только COT", ANALOG_FEATURES_COT_ONLY),
+    "cot_price": ("COT + цена", ANALOG_FEATURES_COT_PRICE),
+}
+
+# Оставлено для обратной совместимости; равно режиму COT + цена.
 DEFAULT_ANALOG_FEATURES: Dict[str, float] = {
     "leveraged_funds_net_oi": 1.0,
     "leveraged_funds_pct_52w": 1.0,
